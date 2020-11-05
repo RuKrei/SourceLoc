@@ -4,4 +4,5 @@
 # License: BSD (3-clause)
 
 subjects = ["PP05071984"]
-session = ["resting_state"]
+session = "resting"
+
