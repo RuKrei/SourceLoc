@@ -28,11 +28,7 @@ for subj in subjects:
     fanat = os. path.join(fbase, "freesurfer")
     fprep = os.path.join(fbase, "preprocessing")
     ffwd = os.path.join(fbase, "forward_model")
-    fcss = os.path.join(ffwd, "cortex_source_space")
-    fvss = os.path.join(ffwd, "volume_source_space")
     finv = os.path.join(fbase, "inverse_model")
-    fci = os.path.join(finv, "cortex_inverse")
-    fvi = os.path.join(finv, "volume_inverse")
     spikes = os.path.join(fbase, "spikes")
     freq = os.path.join(fbase, "frequency_distribution")
     fDICS = os.path.join(freq, "DICS")
@@ -43,7 +39,7 @@ for subj in subjects:
     feve = os.path.join(fbase, "eventfiles")
     freport = os.path.join(fbase, "report")
     
-    folder_list = [fbase, fmeg, fsrc, fanat, fprep, ffwd, fcss, fvss, finv, fci, fvi, spikes, freq, fDICS, fMNE, conn, cnonspike, cspike, feve, freport]
+    folder_list = [fbase, fmeg, fsrc, fanat, fprep, ffwd, finv, spikes, freq, fDICS, fMNE, conn, cnonspike, cspike, feve, freport]
 
     for fld in folder_list:
         if not os.path.exists(fld):

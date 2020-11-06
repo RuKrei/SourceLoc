@@ -4,9 +4,10 @@
 from nipype.interfaces.freesurfer import ReconAll
 import os
 from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data_root,
-                            BEM_single_shell, BEM_three_layer, spacings)
+                            BEM_single_shell, BEM_three_layer, spacings, volume_label, single_volume)
 import glob
 import mne
+from utils.utils import FileNameRetriever
 
 
 # freesurfer
@@ -23,52 +24,69 @@ for subj in subjects:
     reconall.run()
 
 
+# In order to mess around a lot less with filenames
+fnr = FileNameRetriever(bids_root)
+
+
+# Head-Model
+for subj in subjects:
+    subjects_dir = os.path.join(bids_root, "derivatives", "sub-" + subj, "freesurfer")
+    if not os.path.isfile(subjects_dir + '/' + subj + '/bem/' + subj + '-head.fif'):
+        mne.bem.make_watershed_bem(subject=subj, subjects_dir=subjects_dir, overwrite=True)
+
+
 # Cortex Source space
 for subj in subjects:
     for spacing in spacings:
-        fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
-        fsrc = os.path.join(fbase, "source_model")
-        srcfilename = (subj + '_' + spacing + '_src.fif')
-        srcfilename = os.path.join(fsrc, srcfilename)
+        srcfilename = fnr.get_filename(subj, spacing)
         if not os.path.isfile(srcfilename):
-                src = mne.setup_source_space(subj, spacing = spacing, 
+            src = mne.setup_source_space(subj, spacing = spacing, 
                                             subjects_dir = subjects_dir, 
                                             n_jobs=n_jobs, 
                                             verbose=True)
-                mne.write_source_spaces(srcfilename, src, overwrite=True, verbose=True)
+            mne.write_source_spaces(srcfilename, src, overwrite=True, verbose=True)
 
 
-# BEM-Model
-#for subj in subjects:
-#    subjects_dir = os.path.join(bids_root, "derivatives", "sub-" + subj, "freesurfer")
-#    if not os.path.isfile(subjects_dir + '/' + subj + '/bem/' + subj + '-head.fif'):
-#        mne.bem.make_watershed_bem(subject=subj, subjects_dir=subjects_dir, overwrite=True)
-    
+# Volume source space
+for subj in subjects:
+    srcfilename = fnr.get_filename(subj, "vol-src")
+    if not os.path.isfile(srcfilename):
+        src_vol = mne.setup_volume_source_space(subj, pos=3.0, 
+                                        subjects_dir = subjects_dir, 
+                                        volume_label=volume_label,
+                                        single_volume=single_volume,
+                                        verbose=True)
+        mne.write_source_spaces(srcfilename, src_vol, overwrite=True, verbose=True)
 
 
+# BEM Solutions - single shell
+bem_f_name = subjects_dir + '/' + subj + '/bem/' + subj + '-head.fif'
+for subj in subjects:
+    bem_save_name = fnr.get_filename(subj, "single-shell-model")
+    bem = mne.make_bem_model(subj, ico=4, 
+                    conductivity=BEM_single_shell,   
+                    subjects_dir=subjects_dir, verbose=True)
+    mne.write_bem_surfaces(bem_save_name, bem, overwrite=True)
+
+    bem_sol_filename = fnr.get_filename(subj, "single-shell-BEM-sol")
+    if not os.path.isfile(bem_sol_filename):
+        bem = mne.read_bem_surfaces(bem_save_name)    
+        bem_sol = mne.make_bem_solution(bem)
+        mne.write_bem_solution(bem_sol_filename, bem_sol)
 
 
+# BEM Solutions - 3-layer-BEM
+bem_f_name = subjects_dir + '/' + subj + '/bem/' + subj + '-head.fif'
+for subj in subjects:
+    bem_save_name = fnr.get_filename(subj, "3-layer-BEM-model")
+    bem = mne.make_bem_model(subj, ico=4, 
+                    conductivity=BEM_three_layer,   
+                    subjects_dir=subjects_dir, verbose=True)
+    mne.write_bem_surfaces(bem_save_name, bem, overwrite=True)
 
+    bem_sol_filename = fnr.get_filename(subj, "3-layer-BEM-sol")
+    if not os.path.isfile(bem_sol_filename):
+        bem = mne.read_bem_surfaces(bem_save_name)    
+        bem_sol = mne.make_bem_solution(bem)
+        mne.write_bem_solution(bem_sol_filename, bem_sol)
 
-# BEM Solutions    
-    
-#bem_f_name = 
-
-
-
-#    if not os.path.isfile(bem_f_name):
-#        bem = mne.make_bem_model(subj, ico=bem_spacing, 
-#                        conductivity=conductivity,   
-#                        subjects_dir=subjects_dir, verbose=True)
-#        bem_save_name = os.path.join(bem_f_name)
-#        mne.write_bem_surfaces(bem_save_name, bem)
-#
-#    bem_sol_filename = (subj + '_bem.fif')
-#    bem_sol_filename = os.path.join(for_report_dir, bem_sol_filename)
-#    if not os.path.isfile(bem_sol_filename):
-#        if not bem:
-#            bem = mne.read_bem_surfaces(bem_file)    
-#        bem_sol = mne.make_bem_solution(bem)
-#        mne.write_bem_solution(bem_sol_filename, bem_sol)
-#    else:
-#        bem_sol = mne.bem.read_bem_solution(bem_sol_filename)
