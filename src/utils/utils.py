@@ -2,6 +2,7 @@
 # License: BSD (3-clause)
 
 import os
+import glob
 
 class FileNameRetriever():
     def __init__(self, bids_root):
@@ -72,3 +73,7 @@ class FileNameRetriever():
                 bem_save_name = os.path.join(ffwd, bem_f_name.split(".")[0] + "-3-layer-bemfile-ico4.fif")
                 return bem_save_name
 
+        def get_tsss_fifs(self, subj=None):
+            tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-", subj + "meg")
+            fifs = glob.glob(tsss_dir + "*.fif")
+            return fifs

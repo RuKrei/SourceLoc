@@ -16,6 +16,7 @@ session = "resting"
 # Processing
 openmp = 35
 n_jobs = 35
+concat_raws = True   # this only makes sense, if cHPI was on + Head position was transposed by Maxfilter
 
 
 # freesurfer_and_BEM
