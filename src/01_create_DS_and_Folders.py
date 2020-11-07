@@ -3,10 +3,8 @@
 
 from mne_bids import BIDSPath, write_raw_bids, print_dir_tree, write_anat
 import os
-import utils as u
 from configuration import subjects, session, bids_root, data_root
 import glob
-import mne
 from dicom2nifti import convert_directory
 from shutil import copyfile
 
@@ -16,11 +14,11 @@ def convert_dcm_folder(subj):
         anafolder = os.path.join(data_root, subj, "data", "anat", subj)
         folder = str(glob.glob((anafolder + '/1*/100*/100*'), recursive=True)[0])
         convert_directory(folder, anafolder, compression=True, reorient=True)
-    except OSError as e:
+    except Exception as e:
         print(e)
 
 
-# Add derivatives folder structure + bids_root directory
+# Add derivatives folder structure + bids_root directory 
 for subj in subjects:
     fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
     fmeg = os.path.join(fbase, "meg")
@@ -37,9 +35,10 @@ for subj in subjects:
     cnonspike = os.path.join(conn, "nonspike_all_to_all")
     cspike = os.path.join(conn, "spike")    # this needs to be filled according to spike name later
     feve = os.path.join(fbase, "eventfiles")
+    ftrans = os.path.join(fbase, "trans_files")
     freport = os.path.join(fbase, "report")
     
-    folder_list = [fbase, fmeg, fsrc, fanat, fprep, ffwd, finv, spikes, freq, fDICS, fMNE, conn, cnonspike, cspike, feve, freport]
+    folder_list = [fbase, fmeg, fsrc, fanat, fprep, ffwd, finv, spikes, freq, fDICS, fMNE, conn, cnonspike, cspike, feve, ftrans, freport]
 
     for fld in folder_list:
         if not os.path.exists(fld):

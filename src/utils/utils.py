@@ -3,6 +3,11 @@
 
 import os
 import glob
+import mne
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
 
 class FileNameRetriever():
     def __init__(self, bids_root):
@@ -22,6 +27,20 @@ class FileNameRetriever():
                 "3-layer-BEM-model", "single-shell-model"
             BEM - Solution:
                 "single-shell-BEM-sol", "3-layer-BEM-sol"
+            Concatednated -trans-tsss.fif-file:
+                "concat"
+            Eventfolder:
+                "event_folder"
+            Freesurfer Subjects Directory:
+                "subjects_dir"
+            Frequency distribution - MNE:
+                "freqMNE"
+            Forward solution:
+                "fwd"
+            
+            
+
+            
         """
         
         self.subj = subj
@@ -72,8 +91,126 @@ class FileNameRetriever():
             if file == "3-layer-BEM-model":
                 bem_save_name = os.path.join(ffwd, bem_f_name.split(".")[0] + "-3-layer-bemfile-ico4.fif")
                 return bem_save_name
+        
+        # filepath - concat file
+        if file == "concat":
+            tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+            concat_fname = subj + "-concat-raw-tsss.fif"
+            concat = os.path.join(tsss_dir, concat_fname)
+            return concat
+        
+        # filepath - event file
+        if file == "event_folder":
+            return os.path.join(fbase, "eventfiles")
 
-        def get_tsss_fifs(self, subj=None):
-            tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-", subj + "meg")
-            fifs = glob.glob(tsss_dir + "*.fif")
-            return fifs
+         # filepath - Subjects Directory
+        if file == "subjects_dir":
+            return os.path.join(self.bids_root, "derivatives", "sub-" + subj, "freesurfer")
+        
+        # filepath - Frequency distribution - MNE
+        if file=="freqMNE":
+            return os.path.join(freq, "MNE")
+        
+        # filepath - Frequency distribution - DICS
+        if file=="freqDICS":
+            return os.path.join(freq, "DICS")
+        
+        # filepath - Forward solution
+        if file=="fwd":
+            fwdname = str(subj + "-forward.fif")
+            return os.path.join(ffwd, fwdname)
+
+
+
+    def get_tsss_fifs(self, subj=None):
+        tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        fifs = glob.glob(tsss_dir + "/*tsss.fif")
+        return fifs
+    
+    def get_trans_file(self, subj=None, fif=None):
+        trans_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        trans_name = fif.split("/")[-1].split(".")[0] + "-transfile.fif"
+        trans_name = os.path.join(trans_dir, trans_name)
+        return trans_name
+
+ 
+class RawPreprocessor():
+
+    def __init__(self):
+        pass
+
+    def transform_eventfile(self, event_file):
+        """
+        Receives a .csv or .txt files as exported i.e. via brainstorm and
+        transforms it according to mne-needs.
+
+        Returns a tuple:
+        new_eve_file, event_dict
+        --> = transformed event-file, dictionary with Eventnames
+        """
+
+        eve = pd.read_csv(event_file, header=0)
+        le = LabelEncoder()
+        labels = eve.iloc[:,0]
+        l_enc = le.fit_transform(labels)
+        l_enc = l_enc
+        new_eve_file = pd.DataFrame([eve.iloc[:,1], eve.iloc[:,0], (l_enc +1)]).T
+        new_eve_file.reset_index(drop=True, inplace = True)
+        new_eve_file.iloc[:,0] = (new_eve_file.iloc[:,0]*1000).astype(int)
+        new_eve_file.iloc[0,2] = 0  #create one pseudo-event (that is going to be dropped later for some reason)
+        
+        name_of_events = np.unique(events.iloc[:,1])
+        name_of_events = np.sort(name_of_events)
+        event_dict=dict()
+        event_dict['ignore_me']=0
+        for i in range(name_of_events.size):
+            key = (name_of_events[i])
+            val = i + 1
+            event_dict[key] = val
+        return new_eve_file, event_dict
+    
+    def combine_events_w_raw(self, raw, event_file):
+        """
+        Receives the eventfile as processed by RawPreprocessor.transform_eventfile() + raw fif.
+        Returns raw with events added
+        """
+        event_file.reset_index(drop=True, inplace = True)
+        event_file.iloc[:,0].astype(int)
+        event_file.iloc[:,1].astype(str)
+        event_file.iloc[:,2] = e.iloc[:,2].astype(int)
+        event_file.iloc[:,1] = 0
+        events = event_file.astype(int)
+        raw = mne.io.read_raw(raw, preload=True)
+        raw = raw.add_events(events)
+        return raw
+
+    def get_event_file(self, event_folder, raw_filename):
+        rawfile = raw_filename.split("/")[-1].split(".")[0]
+        eventfile = os.path.join(event_folder, rawfile + "_Events.csv")
+        if os.path.isfile(eventfile):
+            return eventfile
+        eventfile = os.path.join(event_folder, rawfile + "_Events.txt")
+        if os.path.isfile(eventfile):
+            return eventfile
+    
+    def filter_raw(self, raw, l_freq=1, h_freq=70, fir_design="firwin", n_jobs=1):
+        raw = raw.filter(l_freq=l_freq, h_freq=h_freq, fir_design=fir_design)
+        return raw
+    
+    def resample_raw(self, raw, s_freq=300):
+        raw.resample(s_freq, npad='auto')
+        return raw
+
+def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
+    title = (filebase + ' - Frequenzanalyse - ' + band)
+    brain = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='both',
+                        time_label=title, colormap='inferno', 
+                        clim=dict(kind='percent', lims=(25, 70, 99)))
+    brain.show_view(dict(azimuth=0, elevation=0), roll=0)
+    return brain
+def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
+    title = (filebase + ' - Frequenzanalyse - ' + band)
+    brain = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='split',
+                        time_label=title, colormap='inferno', size=(1500, 800),
+                        clim=dict(kind='percent', lims=(25, 70, 99)))
+    return brain

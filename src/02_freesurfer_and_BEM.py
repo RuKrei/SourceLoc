@@ -11,17 +11,43 @@ from utils.utils import FileNameRetriever
 
 
 # freesurfer
-reconall = ReconAll()
-for subj in subjects:
-    anafolder = os.path.join(data_root, subj, "data", "anat", subj)
-    nii_file = glob.glob(anafolder + "/*.nii*")
-    subjects_dir = os.path.join(bids_root, "derivatives", "sub-" + subj, "freesurfer")
-    reconall.inputs.subject_id = subj
-    reconall.inputs.T1_files = nii_file
-    reconall.inputs.directive = 'all'
-    reconall.inputs.subjects_dir = subjects_dir
-    reconall.inputs.openmp = openmp
-    reconall.run()
+if do_anatomy == True:
+    reconall = ReconAll()
+    for subj in subjects:
+        anafolder = os.path.join(data_root, subj, "data", "anat", subj)
+        nii_file = glob.glob(anafolder + "/*.nii*")
+        subjects_dir = os.path.join(bids_root, "derivatives", "sub-" + subj, "freesurfer")
+        reconall.inputs.subject_id = subj
+        reconall.inputs.T1_files = nii_file
+        reconall.inputs.directive = 'all'
+        reconall.inputs.subjects_dir = subjects_dir
+        reconall.inputs.openmp = openmp
+        reconall.run()
+
+
+# For later:
+
+# https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.freesurfer.preprocess.html
+
+#reconall_subfields = ReconAll()
+#reconall_subfields.inputs.subject_id = 'foo'
+#reconall_subfields.inputs.directive = 'all'
+#reconall_subfields.inputs.subjects_dir = '.'
+#reconall_subfields.inputs.T1_files = 'structural.nii'
+#reconall_subfields.inputs.hippocampal_subfields_T1 = True
+#reconall_subfields.cmdline
+#'recon-all -all -i structural.nii -hippocampal-subfields-T1 -subjid foo -sd .'
+#reconall_subfields.inputs.hippocampal_subfields_T2 = (
+#'structural.nii', 'test')
+#reconall_subfields.cmdline
+#'recon-all -all -i structural.nii -hippocampal-subfields-T1T2 structural.nii test -subjid foo -sd .'
+#reconall_subfields.inputs.hippocampal_subfields_T1 = False
+#reconall_subfields.cmdline
+#'recon-all -all -i structural.nii -hippocampal-subfields-T2 structural.nii test -subjid foo -sd .'
+
+
+
+
 
 
 # In order to mess around a lot less with filenames
@@ -30,7 +56,7 @@ fnr = FileNameRetriever(bids_root)
 
 # Head-Model
 for subj in subjects:
-    subjects_dir = os.path.join(bids_root, "derivatives", "sub-" + subj, "freesurfer")
+    subjects_dir = fnr.get_filename(subj, file="subjects_dir")
     if not os.path.isfile(subjects_dir + '/' + subj + '/bem/' + subj + '-head.fif'):
         mne.bem.make_watershed_bem(subject=subj, subjects_dir=subjects_dir, overwrite=True)
 
@@ -39,6 +65,7 @@ for subj in subjects:
 for subj in subjects:
     for spacing in spacings:
         srcfilename = fnr.get_filename(subj, spacing)
+        subjects_dir = fnr.get_filename(subj, file="subjects_dir")
         if not os.path.isfile(srcfilename):
             src = mne.setup_source_space(subj, spacing = spacing, 
                                             subjects_dir = subjects_dir, 
@@ -50,6 +77,7 @@ for subj in subjects:
 # Volume source space
 for subj in subjects:
     srcfilename = fnr.get_filename(subj, "vol-src")
+    subjects_dir = fnr.get_filename(subj, file="subjects_dir")
     if not os.path.isfile(srcfilename):
         src_vol = mne.setup_volume_source_space(subj, pos=3.0, 
                                         subjects_dir = subjects_dir, 
@@ -60,8 +88,8 @@ for subj in subjects:
 
 
 # BEM Solutions - single shell
-bem_f_name = subjects_dir + '/' + subj + '/bem/' + subj + '-head.fif'
 for subj in subjects:
+    subjects_dir = fnr.get_filename(subj, file="subjects_dir")
     bem_save_name = fnr.get_filename(subj, "single-shell-model")
     bem = mne.make_bem_model(subj, ico=4, 
                     conductivity=BEM_single_shell,   
@@ -76,8 +104,8 @@ for subj in subjects:
 
 
 # BEM Solutions - 3-layer-BEM
-bem_f_name = subjects_dir + '/' + subj + '/bem/' + subj + '-head.fif'
 for subj in subjects:
+    subjects_dir = fnr.get_filename(subj, file="subjects_dir")
     bem_save_name = fnr.get_filename(subj, "3-layer-BEM-model")
     bem = mne.make_bem_model(subj, ico=4, 
                     conductivity=BEM_three_layer,   
