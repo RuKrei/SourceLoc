@@ -23,11 +23,11 @@ for subj in subjects:
         trans = fnr.get_trans_file(subj, concat_file)
         fwd_name = fnr.get_filename(subj=subj, file="fwd")
         freq_MNE_folder = fnr.get_filename(subj=subj, file="freqMNE")
-        all_stcs_filename = (filebase + '-stc-psd.pkl')
+        all_stcs_filename = (filebase + '-stc-psd-MNE.pkl')
         all_stcs_filename = os.path.join(freq_MNE_folder, all_stcs_filename)
-        sensor_psd_filename = (filebase + '-sensor-psd.pkl')
+        sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
         sensor_psd_filename = os.path.join(freq_MNE_folder, sensor_psd_filename)
-        if not os.path.isfile(all_stcs_filename):
+        if not os.path.isfile(all_stcs_filename) or if not os.path.isfile(sensor_psd_filename):
             raw = mne.io.read_raw(concat_file, preload=True)
             if os.path.isfile(fwd_name):
                 fwd = mne.read_forward_solution(fwd_name)
@@ -49,7 +49,7 @@ for subj in subjects:
                                                 method='MNE', 
                                                 fmin=1, fmax=45, n_fft=2048, n_jobs=n_jobs, 
                                                 return_sensor=True, verbose=True)
-            sensor_psd_filename = (filebase + '-sensor-psd.pkl')
+            sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
             sensor_psd_filename = os.path.join(freq_MNE_folder, sensor_psd_filename)
             pickle.dump(stc_psd, open(all_stcs_filename, "wb"))
             pickle.dump(sensor_psd, open(sensor_psd_filename, "wb"))
@@ -86,3 +86,15 @@ for subj in subjects:
             freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
             image = brain[band].save_image(freqfilename3d)
 
+
+
+
+"""
+To do:
+- calculate diffenece between MNE and DICS solution --> is there any?
+    normalize stc_psd-data for both solutions, subtract one from the other and plot
+    for visual prototyping
+        are there vast differences?
+
+
+"""

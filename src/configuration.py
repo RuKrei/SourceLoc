@@ -66,3 +66,11 @@ freq_bands = dict(                #the frequency bands of interest for the analy
                 gamma=(30, 80))
 use_source_model_for_freq = "ico4"
 
+
+
+"""
+To do:
+add a do_anatomy_only variable to do just the anatomy-stuff (or add a .sh file that does only that...)
+
+
+"""
