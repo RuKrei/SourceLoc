@@ -3,7 +3,8 @@
 
 import os
 
-from numpy.core.numeric import load
+#from numpy.core.numeric import load
+import numpy as np
 from configuration import (subjects, n_jobs, bids_root, use_source_model_for_freq, 
                             pick_meg, pick_eeg, freq_bands, concat_raws)
 import mne
@@ -13,6 +14,8 @@ import pickle
 
 fnr = FileNameRetriever(bids_root)
 
+
+# 1. Frequency disttribution with Minimum norm
 for subj in subjects:
     if concat_raws:
         concat_file = fnr.get_filename(subj=subj, file="concat")
@@ -27,7 +30,7 @@ for subj in subjects:
         all_stcs_filename = os.path.join(freq_MNE_folder, all_stcs_filename)
         sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
         sensor_psd_filename = os.path.join(freq_MNE_folder, sensor_psd_filename)
-        if not os.path.isfile(all_stcs_filename) or if not os.path.isfile(sensor_psd_filename):
+        if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):
             raw = mne.io.read_raw(concat_file, preload=True)
             if os.path.isfile(fwd_name):
                 fwd = mne.read_forward_solution(fwd_name)
@@ -87,10 +90,72 @@ for subj in subjects:
             image = brain[band].save_image(freqfilename3d)
 
 
+"""
+# 2. Frequency distribution with DICS beamformer:  --> to be fixed
+for subj in subjects:
+    if concat_raws:
+        concat_file = fnr.get_filename(subj=subj, file="concat")
+        filebase = concat_file.split("/")[-1].split(".")[0]
+        subjects_dir = fnr.get_filename(subj=subj, file="subjects_dir")
+        src = fnr.get_filename(subj=subj, file=use_source_model_for_freq)
+        bem_sol = fnr.get_filename(subj=subj, file="3-layer-BEM-sol")
+        trans = fnr.get_trans_file(subj, concat_file)
+        fwd_name = fnr.get_filename(subj=subj, file="fwd")
+        freq_DICS_folder = fnr.get_filename(subj=subj, file="freqDICS")
+        all_stcs_filename = (filebase + '-stc-psd-DICS.pkl')
+        all_stcs_filename = os.path.join(freq_DICS_folder, all_stcs_filename)
+        sensor_psd_filename = (filebase + '-sensor-psd-DICS.pkl')
+        sensor_psd_filename = os.path.join(freq_DICS_folder, sensor_psd_filename)
+        brain = dict()
+        if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):
+            raw = mne.io.read_raw(concat_file)
+            print("raw loaded")
+            epochs = mne.make_fixed_length_epochs(raw, duration=15, verbose=True, preload=True)
+            fwd = mne.make_forward_solution(epochs.info, src=src, bem=bem_sol,
+                                            trans=trans, 
+                                            meg=pick_meg, eeg=pick_eeg, mindist=0.2, 
+                                            ignore_ref=False, 
+                                            n_jobs=n_jobs, verbose=True)
+            ### convert frequency bins to logspace:
+            log_freq_bands = dict()
+            for band in freq_bands:
+                lower, upper = freq_bands[band]
+                band_range = upper - lower +1
+                log_freq_bands[band] = (np.logspace(np.log10(lower), np.log10(upper), band_range))
+            
+            csds = dict()
+            stc_DICS = dict()
+            for band in freq_bands:
+                csds[band] = mne.time_frequency.csd_morlet(epochs, log_freq_bands[band], 
+                                                            tmin=0, tmax=15, n_jobs=n_jobs)
+                csds[band] = csds[band].mean()
+                # create an empty csd as csd_noise
+                csd_noise = csds[band].copy()
+                noise_data = np.zeros_like(csds[band].get_data())
+                csd_noise.data = noise_data
+                DICS = mne.beamformer.make_dics(epochs.info, fwd, csds[band],noise_csd=csd_noise, pick_ori="max-power")
+                stc_DICS[band], _freq = mne.beamformer.apply_dics_csd(csds[band], DICS)
+                brain[band] = plot_freq_band_dors(stc_DICS[band], band=band, subject=subj, 
+                                                        subjects_dir=subjects_dir,
+                                                        filebase=filebase)
+                freqfilename3d = (filebase + '_' + band + '_DICS_freq_topomap_3d_dors.png')
+                freqfilename3d = os.path.join(freq_DICS_folder, freqfilename3d)
+                image = brain[band].save_image(freqfilename3d)
+                brain[band] = plot_freq_band_lat(stc_DICS[band], band=band, subject=subj, 
+                                                            subjects_dir=subjects_dir,
+                                                            filebase=filebase)
+                freqfilename3d = (filebase + '_' + band + '_DICS_freq_topomap_3d_lat.png')
+                freqfilename3d = os.path.join(freq_DICS_folder, freqfilename3d)
+                image = brain[band].save_image(freqfilename3d)
+"""
+
+
+
 
 
 """
 To do:
+- make DICS Solution work :-)
 - calculate diffenece between MNE and DICS solution --> is there any?
     normalize stc_psd-data for both solutions, subtract one from the other and plot
     for visual prototyping

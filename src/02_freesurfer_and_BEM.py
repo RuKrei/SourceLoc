@@ -13,6 +13,7 @@ from utils.utils import FileNameRetriever
 # freesurfer
 if do_anatomy == True:
     reconall = ReconAll()
+    reconall_subfields = ReconAll()
     for subj in subjects:
         anafolder = os.path.join(data_root, subj, "data", "anat", subj)
         nii_file = glob.glob(anafolder + "/*.nii*")
@@ -20,37 +21,15 @@ if do_anatomy == True:
         reconall.inputs.subject_id = subj
         reconall.inputs.T1_files = nii_file
         reconall.inputs.directive = 'all'
+    #    reconall.inputs.hippocampal_subfields_T1 = True
         reconall.inputs.subjects_dir = subjects_dir
         reconall.inputs.openmp = openmp
         reconall.run()
 
-
-# For later:
-
-# https://nipype.readthedocs.io/en/latest/api/generated/nipype.interfaces.freesurfer.preprocess.html
-
-#reconall_subfields = ReconAll()
-#reconall_subfields.inputs.subject_id = 'foo'
-#reconall_subfields.inputs.directive = 'all'
-#reconall_subfields.inputs.subjects_dir = '.'
-#reconall_subfields.inputs.T1_files = 'structural.nii'
-#reconall_subfields.inputs.hippocampal_subfields_T1 = True
-#reconall_subfields.cmdline
-#'recon-all -all -i structural.nii -hippocampal-subfields-T1 -subjid foo -sd .'
-#reconall_subfields.inputs.hippocampal_subfields_T2 = (
-#'structural.nii', 'test')
-#reconall_subfields.cmdline
-#'recon-all -all -i structural.nii -hippocampal-subfields-T1T2 structural.nii test -subjid foo -sd .'
-#reconall_subfields.inputs.hippocampal_subfields_T1 = False
-#reconall_subfields.cmdline
-#'recon-all -all -i structural.nii -hippocampal-subfields-T2 structural.nii test -subjid foo -sd .'
+        
+        
 
 
-
-
-
-
-# In order to mess around a lot less with filenames
 fnr = FileNameRetriever(bids_root)
 
 
