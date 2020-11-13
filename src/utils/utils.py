@@ -214,3 +214,4 @@ def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, fil
                         time_label=title, colormap='inferno', size=(1500, 800),
                         clim=dict(kind='percent', lims=(25, 70, 99)))
     return brain
+

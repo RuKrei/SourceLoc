@@ -2,8 +2,6 @@
 # License: BSD (3-clause)
 
 import os
-
-#from numpy.core.numeric import load
 import numpy as np
 from configuration import (subjects, n_jobs, bids_root, use_source_model_for_freq, 
                             pick_meg, pick_eeg, freq_bands, concat_raws)
@@ -88,6 +86,32 @@ for subj in subjects:
             freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat.png')
             freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
             image = brain[band].save_image(freqfilename3d)
+        
+
+
+# 2. Cross hemisphere comparison
+
+            mstc = stcs[band].copy()
+            mstc = mne.compute_source_morph(mstc, subject, 'fsaverage_sym',
+                                                        smooth=5,
+                                                        warn=False,
+                                                        subjects_dir=epi_subjects_dir).apply(mstc)
+            morph = mne.compute_source_morph(mstc, 'fsaverage_sym', 'fsaverage_sym',
+                                                        spacing=mstc.vertices, warn=False,
+                                                        subjects_dir=epi_subjects_dir, xhemi=True,
+                                                        verbose='error')
+            stc_xhemi = morph.apply(mstc)
+            diff = mstc - stc_xhemi
+            title = ('blue = RH;   ' + filebase + ' - Freq - Cross_hemi - ' + band)
+            x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=epi_subjects_dir, 
+                                    size=(1200, 800), time_label=title, 
+                                    clim=dict(kind='percent', lims=[-100, 0, 100]))
+            freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
+            freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
+            image = x_hemi_freq[band].save_image(freqfilename3d)
+
+
+
 
 
 """
@@ -160,6 +184,8 @@ To do:
     normalize stc_psd-data for both solutions, subtract one from the other and plot
     for visual prototyping
         are there vast differences?
+
+- Cross hemisphere comparison
 
 
 """
