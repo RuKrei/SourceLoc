@@ -127,6 +127,11 @@ class FileNameRetriever():
         fifs = glob.glob(tsss_dir + "/*tsss.fif")
         return fifs
     
+    def get_concat_fif(self, subj=None):
+        tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        fifs = glob.glob(tsss_dir + "/*concat-raw-tsss.fif")
+        return fifs
+    
     def get_trans_file(self, subj=None, fif=None):
         trans_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
         trans_name = fif.split("/")[-1].split(".")[0] + "-transfile.fif"
@@ -152,6 +157,7 @@ class RawPreprocessor():
         eve = pd.read_csv(event_file, header=0)
         le = LabelEncoder()
         labels = eve.iloc[:,0]
+        print(f"Labels --> {labels}")
         l_enc = le.fit_transform(labels)
         l_enc = l_enc
         new_eve_file = pd.DataFrame([eve.iloc[:,1], eve.iloc[:,0], (l_enc +1)]).T
@@ -159,7 +165,7 @@ class RawPreprocessor():
         new_eve_file.iloc[:,0] = (new_eve_file.iloc[:,0]*1000).astype(int)
         new_eve_file.iloc[0,2] = 0  #create one pseudo-event (that is going to be dropped later for some reason)
         
-        name_of_events = np.unique(events.iloc[:,1])
+        name_of_events = np.unique(eve.iloc[:,0])
         name_of_events = np.sort(name_of_events)
         event_dict=dict()
         event_dict['ignore_me']=0
@@ -175,13 +181,13 @@ class RawPreprocessor():
         Returns raw with events added
         """
         event_file.reset_index(drop=True, inplace = True)
-        event_file.iloc[:,0].astype(int)
-        event_file.iloc[:,1].astype(str)
-        event_file.iloc[:,2] = e.iloc[:,2].astype(int)
-        event_file.iloc[:,1] = 0
-        events = event_file.astype(int)
+        event_file.iloc[:,0] = event_file.iloc[:,0].astype(int)
+        event_file.iloc[:,1] = event_file.iloc[:,1].astype(str)
+        event_file.iloc[:,2] = event_file.iloc[:,2].astype(int)
+        event_file.iloc[:,1] = int("0")
+        print(f"event_file --> {event_file.iloc[:,0]}")
         raw = mne.io.read_raw(raw, preload=True)
-        raw = raw.add_events(events)
+        raw = raw.add_events(event_file)
         return raw
 
     def get_event_file(self, event_folder, raw_filename):
@@ -214,4 +220,4 @@ def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, fil
                         time_label=title, colormap='inferno', size=(1500, 800),
                         clim=dict(kind='percent', lims=(25, 70, 99)))
     return brain
-
+ 

@@ -12,7 +12,7 @@ candice = False
 # BIDS inputs
 if beast:
     bids_root = "/home/idrael/DATA/MEG/BIDS_clinic"   #beast
-    data_root = "/home/idrael/DATA/MEG_playground"    #beast
+    data_root = "/home/idrael/DATA/MEG/clinic"    #beast
 
 if candice:
     bids_root = "/Users/idrael/Playground/BIDS_clinic"    #candice
@@ -42,7 +42,7 @@ s_freq = 300
 
 
 # freesurfer_and_BEM
-do_anatomy = True
+do_anatomy = False
 do_hippocampus_segmentation = True
 
 # BEM_spacing = 

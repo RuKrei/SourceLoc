@@ -21,7 +21,7 @@ if do_anatomy == True:
         reconall.inputs.subject_id = subj
         reconall.inputs.T1_files = nii_file
         reconall.inputs.directive = 'all'
-    #    reconall.inputs.hippocampal_subfields_T1 = True
+        #reconall.inputs.hippocampal_subfields_T1 = True
         reconall.inputs.subjects_dir = subjects_dir
         reconall.inputs.openmp = openmp
         reconall.run()
