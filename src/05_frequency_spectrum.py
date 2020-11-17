@@ -29,7 +29,7 @@ for subj in subjects:
         sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
         sensor_psd_filename = os.path.join(freq_MNE_folder, sensor_psd_filename)
         if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):
-            raw = mne.io.read_raw(concat_file, preload=True)
+            raw = mne.io.read_raw_fif(concat_file, preload=True)
             if os.path.isfile(fwd_name):
                 fwd = mne.read_forward_solution(fwd_name)
             else:    
@@ -92,20 +92,20 @@ for subj in subjects:
 # 2. Cross hemisphere comparison
 
             mstc = stcs[band].copy()
-            mstc = mne.compute_source_morph(mstc, subject, 'fsaverage_sym',
+            mstc = mne.compute_source_morph(mstc, subj, 'fsaverage_sym',
                                                         smooth=5,
                                                         warn=False,
-                                                        subjects_dir=epi_subjects_dir).apply(mstc)
+                                                        subjects_dir=subjects_dir).apply(mstc)
             morph = mne.compute_source_morph(mstc, 'fsaverage_sym', 'fsaverage_sym',
                                                         spacing=mstc.vertices, warn=False,
-                                                        subjects_dir=epi_subjects_dir, xhemi=True,
+                                                        subjects_dir=subjects_dir, xhemi=True,
                                                         verbose='error')
             stc_xhemi = morph.apply(mstc)
             diff = mstc - stc_xhemi
             title = ('blue = RH;   ' + filebase + ' - Freq - Cross_hemi - ' + band)
-            x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=epi_subjects_dir, 
-                                    size=(1200, 800), time_label=title, 
-                                    clim=dict(kind='percent', lims=[-100, 0, 100]))
+            x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=subjects_dir, 
+                                    size=(1200, 800), time_label=title,
+                                    clim=dict(kind='percent', lims=[0, 50, 100]))
             freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
             freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
             image = x_hemi_freq[band].save_image(freqfilename3d)
@@ -186,6 +186,7 @@ To do:
         are there vast differences?
 
 - Cross hemisphere comparison
+- - copy fsaverage_sym to freesurfer folder
 
 
 """

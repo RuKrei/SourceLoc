@@ -73,7 +73,7 @@ for subj in subjects:
     bem = mne.make_bem_model(subj, ico=4, 
                     conductivity=BEM_single_shell,   
                     subjects_dir=subjects_dir, verbose=True)
-    mne.write_bem_surfaces(bem_save_name, bem, overwrite=True)
+    mne.write_bem_surfaces(bem_save_name, bem) #, overwrite=True)
 
     bem_sol_filename = fnr.get_filename(subj, "single-shell-BEM-sol")
     if not os.path.isfile(bem_sol_filename):
@@ -89,7 +89,7 @@ for subj in subjects:
     bem = mne.make_bem_model(subj, ico=4, 
                     conductivity=BEM_three_layer,   
                     subjects_dir=subjects_dir, verbose=True)
-    mne.write_bem_surfaces(bem_save_name, bem, overwrite=True)
+    mne.write_bem_surfaces(bem_save_name, bem) #, overwrite=True)
 
     bem_sol_filename = fnr.get_filename(subj, "3-layer-BEM-sol")
     if not os.path.isfile(bem_sol_filename):

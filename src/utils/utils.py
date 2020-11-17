@@ -127,6 +127,11 @@ class FileNameRetriever():
         fifs = glob.glob(tsss_dir + "/*tsss.fif")
         return fifs
     
+    def get_tsss_eve_fifs(self, subj=None):
+        tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        fifs = glob.glob(tsss_dir + "/*tsss-eve.fif")
+        return fifs
+    
     def get_concat_fif(self, subj=None):
         tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
         fifs = glob.glob(tsss_dir + "/*concat-raw-tsss.fif")
@@ -138,6 +143,12 @@ class FileNameRetriever():
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
 
+    def get_event_file(self, subj=None, fif=None):
+        fbase = os.path.join(self.bids_root, "derivatives", "sub-" + subj)
+        event_dir = os.path.join(fbase, "eventfiles")
+        eve_name = fif.split("/")[-1].split(".")[0] + "-eve.fif"
+        eve_name = os.path.join(event_dir, eve_name)
+        return eve_name
  
 class RawPreprocessor():
 
@@ -164,7 +175,11 @@ class RawPreprocessor():
         new_eve_file.reset_index(drop=True, inplace = True)
         new_eve_file.iloc[:,0] = (new_eve_file.iloc[:,0]*1000).astype(int)
         new_eve_file.iloc[0,2] = 0  #create one pseudo-event (that is going to be dropped later for some reason)
-        
+        new_eve_file.iloc[:,0] = new_eve_file.iloc[:,0].astype(int)
+        new_eve_file.iloc[:,1] = new_eve_file.iloc[:,1].astype(str)
+        new_eve_file.iloc[:,2] = new_eve_file.iloc[:,2].astype(int)
+        new_eve_file.iloc[:,1] = int("0")
+
         name_of_events = np.unique(eve.iloc[:,0])
         name_of_events = np.sort(name_of_events)
         event_dict=dict()
@@ -177,16 +192,10 @@ class RawPreprocessor():
     
     def combine_events_w_raw(self, raw, event_file):
         """
-        Receives the eventfile as processed by RawPreprocessor.transform_eventfile() + raw fif.
+        Receives the eventfile as processed by RawPreprocessor.transform_eventfile() + loaded raw file.
         Returns raw with events added
         """
-        event_file.reset_index(drop=True, inplace = True)
-        event_file.iloc[:,0] = event_file.iloc[:,0].astype(int)
-        event_file.iloc[:,1] = event_file.iloc[:,1].astype(str)
-        event_file.iloc[:,2] = event_file.iloc[:,2].astype(int)
-        event_file.iloc[:,1] = int("0")
         print(f"event_file --> {event_file.iloc[:,0]}")
-        raw = mne.io.read_raw(raw, preload=True)
         raw = raw.add_events(event_file)
         return raw
 

@@ -3,11 +3,11 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
-subjects = ["PP05071984"]
+subjects = ["BF28011991"]
 
 #where am I?
-beast = True
-candice = False
+beast =  False
+candice = True
 
 # BIDS inputs
 if beast:
@@ -64,6 +64,10 @@ freq_bands = dict(                #the frequency bands of interest for the analy
                 beta=(13, 29), 
                 gamma=(30, 80))
 use_source_model_for_freq = "ico4"
+
+
+# Source localization
+use_source_model_for_sourceloc = "ico4"
 
 
 
