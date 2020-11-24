@@ -37,6 +37,8 @@ class FileNameRetriever():
                 "freqMNE"
             Forward solution:
                 "fwd"
+            Spikes:
+                "spikes"
             
             
 
@@ -119,6 +121,12 @@ class FileNameRetriever():
         if file=="fwd":
             fwdname = str(subj + "-forward.fif")
             return os.path.join(ffwd, fwdname)
+        
+        # filepath - Spike Folder
+        if file=="spikes":
+            fbase = os.path.join(self.bids_root, "derivatives", "sub-" + self.subj)
+            spikes = os.path.join(fbase, "spikes")
+            return spikes
 
 
 
@@ -146,10 +154,18 @@ class FileNameRetriever():
     def get_event_file(self, subj=None, fif=None):
         fbase = os.path.join(self.bids_root, "derivatives", "sub-" + subj)
         event_dir = os.path.join(fbase, "eventfiles")
-        eve_name = fif.split("/")[-1].split(".")[0] + "-eve.fif"
+        eve_name = fif.split("/")[-1].split(".")[0] + "-eve.csv"
+        if not os.path.isfile(eve_name):
+            eve_name = fif.split("/")[-1].split(".")[0] + "-eve.txt"
         eve_name = os.path.join(event_dir, eve_name)
         return eve_name
- 
+
+    def get_epochs_file(self, subj=None, fif=None):
+        epo_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        epo_name = fif.split("/")[-1].split(".")[0] + "-epo.fif"
+        epo_name = os.path.join(epo_dir, epo_name)
+        return epo_name
+
 class RawPreprocessor():
 
     def __init__(self):

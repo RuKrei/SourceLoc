@@ -30,7 +30,11 @@ for subj in subjects:
             print(raw.info)
             raw.add_events(event_file) 
             print(f"After adding the events --> {raw.info}")
-            raw.save(raw_name, overwrite=True)
+            if do_filter:
+                raw = prepper.filter_raw(raw, l_freq=l_freq, h_freq=h_freq, fir_design=fir_design, n_jobs=n_jobs)
+            if do_resample:
+                raw = prepper.resample_raw(raw, s_freq=s_freq)
+            raw.save(raw_name, overwrite=True)   # This should become a BIDS compatible file save later
 
 
 # concatenate
@@ -38,7 +42,7 @@ for subj in subjects:
 if concat_raws == True:
     for subj in subjects:
         raw_files = fnr.get_tsss_eve_fifs(subj)
-        print([raw_files])
+        print(f"Concatenating the following files:\n {[raw_files]}")
         concat_name = fnr.get_filename(subj, "concat")
         if not os.path.isfile(concat_name):
             raws = []
@@ -47,29 +51,24 @@ if concat_raws == True:
                 rawname = mne.io.read_raw_fif(raw, preload=True)
                 raws.append(rawname)
 
-            raw_concat = mne.concatenate_raws(raws)
+            raw_concat = mne.concatenate_raws(raws)   # should also work with raw_concat = mne.concatenate_raws([raw_files])???
 
             if do_filter:
                 raw_concat = prepper.filter_raw(raw_concat, l_freq=l_freq, h_freq=h_freq, fir_design=fir_design, n_jobs=n_jobs)
             if do_resample:
                 raw_concat = prepper.resample_raw(raw_concat, s_freq=s_freq)
-            raw_concat.save(concat_name, overwrite=True)
+            raw_concat.save(concat_name, overwrite=True)   # This should become a BIDS compatible file save later
             print(f"\nConcatenated file info:\n{raw_concat.info}")
         else:
             print("\nNot doing file concatenation, as concat-file exists...")
 
 
 
+"""
+To do:
 
-    """
-    raws = fnr.get_concat_fif(subj)
-    for raw in raws:
-        event_folder = fnr.get_filename(subj, "event_folder")
-#        try:
-        event_file = prepper.get_event_file(event_folder, raw)
-        event_file, event_dict = prepper.transform_eventfile(event_file)    
-        raw = prepper.combine_events_w_raw(raw, event_file)      ########breaks here!
-#        except Exception as e:
-#            print(f"\nSomething went wrong for: \n{raw}")
+save raws with added events in a BIDS compatible manner
+save concat-file in a BIDS compatible manner
+
 
 """

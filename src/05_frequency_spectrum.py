@@ -1,6 +1,8 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
+# this works on the latest dev-version of mne-python, on mne 0.21 it crashes due to a pyvista error (depth peeling...)
+
 import os
 import numpy as np
 from configuration import (subjects, n_jobs, bids_root, use_source_model_for_freq, 
@@ -9,13 +11,16 @@ import mne
 from mne.minimum_norm import compute_source_psd, make_inverse_operator
 from utils.utils import FileNameRetriever, plot_freq_band_dors, plot_freq_band_lat
 import pickle
+import pyvista as pv
 
 fnr = FileNameRetriever(bids_root)
 
 
 # 1. Frequency disttribution with Minimum norm
 for subj in subjects:
-    if concat_raws:
+    if concat_raws == False:
+        print("\nThis is supposed to run on the concatenated version of all input-files. \nPlease run pipeline with concat_raws = True")
+    else:
         concat_file = fnr.get_filename(subj=subj, file="concat")
         filebase = concat_file.split("/")[-1].split(".")[0]
         subjects_dir = fnr.get_filename(subj=subj, file="subjects_dir")
@@ -72,7 +77,8 @@ for subj in subjects:
 
         figure = dict()
         brain = dict()
-        mne.viz.set_3d_backend('mayavi')
+        x_hemi_freq = dict()
+        mne.viz.set_3d_backend('pyvista')
         for band in freq_bands.keys():
             brain[band] = plot_freq_band_dors(stcs[band], band=band, subject=subj, 
                                                         subjects_dir=subjects_dir,
@@ -102,10 +108,9 @@ for subj in subjects:
                                                         verbose='error')
             stc_xhemi = morph.apply(mstc)
             diff = mstc - stc_xhemi
-            title = ('blue = RH;   ' + filebase + ' - Freq - Cross_hemi - ' + band)
+            title = ('blue = RH;   ' + subj + ' - Freq - Cross_hemi - ' + band)
             x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=subjects_dir, 
-                                    size=(1200, 800), time_label=title,
-                                    clim=dict(kind='percent', lims=[0, 50, 100]))
+                                    size=(1200, 800), time_label=title)
             freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
             freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
             image = x_hemi_freq[band].save_image(freqfilename3d)
