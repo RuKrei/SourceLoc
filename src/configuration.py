@@ -6,8 +6,8 @@
 subjects = ["BF28011991"]
 
 #where am I?
-beast =  False
-candice = True
+beast =  True
+candice = False
 
 # BIDS inputs
 if beast:

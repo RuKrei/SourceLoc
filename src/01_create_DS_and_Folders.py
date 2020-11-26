@@ -53,7 +53,7 @@ for subj in subjects:
     fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
     fmeg = os.path.join(fbase, "meg")
     for run, rawfile in enumerate(raws):
-        if "sss" in rawfile:
+        if "tsss" in rawfile:
             newname = bids_path.update(processing="tsss", run=run)
             newname = newname.basename + ".fif"
             destination = os.path.join(fmeg, newname)

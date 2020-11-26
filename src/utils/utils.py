@@ -39,6 +39,8 @@ class FileNameRetriever():
                 "fwd"
             Spikes:
                 "spikes"
+            MEG-Folder:
+                "meg"
             
             
 
@@ -128,6 +130,11 @@ class FileNameRetriever():
             spikes = os.path.join(fbase, "spikes")
             return spikes
 
+        # filepath - meg
+        if file=="meg":
+            fbase = os.path.join(self.bids_root, "derivatives", "sub-" + self.subj)
+            megfolder = os.path.join(fbase, "meg")
+            return megfolder
 
 
     def get_tsss_fifs(self, subj=None):
