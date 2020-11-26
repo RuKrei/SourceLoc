@@ -9,6 +9,7 @@ import glob
 import mne
 from utils.utils import FileNameRetriever , RawPreprocessor
 import utils.utils as u
+import pandas as pd
 
 fnr = FileNameRetriever(bids_root)
 prepper = RawPreprocessor()
@@ -35,6 +36,8 @@ for subj in subjects:
             if do_resample:
                 raw = prepper.resample_raw(raw, s_freq=s_freq)
             raw.save(raw_name, overwrite=True)   # This should become a BIDS compatible file save later
+
+
 
 
 # concatenate
@@ -69,6 +72,7 @@ To do:
 
 save raws with added events in a BIDS compatible manner
 save concat-file in a BIDS compatible manner
+extract epochs here, average and save accordingly
 
 
 """
