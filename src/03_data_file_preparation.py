@@ -79,7 +79,7 @@ for subj in subjects:
             if not os.path.isfile(epochs_filename):
                 raw = mne.io.read_raw_fif(raw_name, preload=True)
                 events = mne.find_events(raw)
-                epochs = mne.Epochs(raw, events, event_dict, tmin=-2, tmax=2, baseline=(-2,-1), 
+                epochs = mne.Epochs(raw, events, event_dict, tmin=-1.5, tmax=1, baseline=(-1.5,-1), 
                                                 #reject=reject, 
                                                 on_missing = 'ignore')
                 print(f"Epochs metadata = {epochs.metadata}")

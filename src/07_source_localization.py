@@ -3,69 +3,158 @@
 
 import os
 import numpy as np
-from configuration import (subjects, n_jobs, bids_root, use_source_model_for_sourceloc, 
-                            pick_meg, pick_eeg, concat_raws)
+from configuration import (subjects, n_jobs, bids_root, use_source_model_for_sourceloc, inv_loose_option,
+                            use_fwd_model_for_sourceloc, do_volume_source_loc, source_loc_methods,
+                            pick_meg, pick_eeg, concat_raws, signal_to_noise_ratio, minimum_norm_ori,
+                            peaks_tmin, peaks_tmax, peaks_mode, peaks_nr_of_points)
 import mne
-from utils.utils import FileNameRetriever, RawPreprocessor
+from utils.utils import FileNameRetriever, RawPreprocessor, get_peak_points
 import glob
+
+mne.viz.set_3d_backend("pyvista")
 
 fnr =FileNameRetriever(bids_root)
 prepper = RawPreprocessor()
 
+snr = signal_to_noise_ratio
+lambda2 = 1. / snr ** 2
+
 for subj in subjects:
     meg_folder = fnr.get_filename(subj, "meg")
-    epos = glob.glob(meg_folder + "*.epo.fif")
+    epos = glob.glob(meg_folder + "/*epo.fif")
+    subjects_dir = fnr.get_filename(subj=subj, file="subjects_dir")
+    bem_sol = fnr.get_filename(subj=subj, file=use_fwd_model_for_sourceloc)
+    trans_file = fnr.get_single_trans_file(subj)
     for epo in epos:
-        epochs = mne.read_epochs(epo, preload=True)
+        epochs = mne.read_epochs(epo)
         print(f"Event-IDs are: {epochs.event_id}")
-    
-
-
-        if os.path.isfile(fwd_name):
-            fwd = mne.read_forward_solution(fwd_name)
-        else:    
-            fwd = mne.make_forward_solution(epochs.info, src=src, bem=bem_sol,
-                                    trans=trans, 
-                                    meg=pick_meg, eeg=pick_eeg, mindist=0.2, 
-                                    ignore_ref=False, 
-                                    n_jobs=n_jobs, verbose=True)
-            mne.write_forward_solution(fwd_name, fwd)
+        events = epochs.event_id
+        print(f"\n\n\nevents: {events}")
 
         noise_cov = mne.compute_covariance(epochs, tmax=-1, 
-                                            #projs=, 
-                                            method='auto',
-                                            n_jobs=n_jobs)
-        data_cov = mne.compute_covariance(epochs,
-                                            tmin=-0.5, 
-                                            tmax=0.3, 
-                                            #projs=, 
-                                            method='auto',
-                                            n_jobs=n_jobs)
+                                    #projs=, 
+                                    method='auto',
+                                    n_jobs=n_jobs)
 
-        eventnames = epochs.event_id.keys()
-    for eventname in eventnames:
-        if str(eventname) == 'ignore_me' or str(eventname) == 'AAA':
-            pass
-        else:
-            save_dir = fnr.get_filename(subj, "spikes")
-            save_name = str(subj + "_" + eventname + '-ave.fif')
-            save_name = os.path.join(save_dir, eventname, save_name)
-            if not os.path.isfile(save_name):
-                plot_event = epochs[str(eventname)].load_data().average()
-                current_event_dir = save_name.split("/")[0:-2]
-                if not os.path.isdir(current_event_dir):
-                    os.mkdir(current_event_dir)
-                    os.mkdir(os.path.join(current_event_dir, 'custom_pics'))
-                    os.mkdir(os.path.join(current_event_dir, 'custom_time_series'))
-                plot_event.save(save_name)
+        data_cov = mne.compute_covariance(epochs,
+                                    tmin=-0.5, 
+                                    tmax=0.3, 
+                                    #projs=, 
+                                    method='auto',
+                                    n_jobs=n_jobs)
+
+        for event in events.keys():
+            eventname = str(event)
+            if eventname == "ignore_me" or eventname == "AAA":
+                pass
             else:
-                plot_event = mne.read_epochs(save_name)
+                e = epochs[eventname].load_data().average()
+                spike_folder = fnr.get_filename(subj, "spikes")
+                e_folder = os.path.join(spike_folder, eventname)
+                cp_folder = os.path.join(spike_folder, eventname, "custom_pics")
+                cts_folder = os.path.join(spike_folder, eventname, "custom_time_series")
+                gp_folder = os.path.join(spike_folder, eventname, "generic_pics")
+                folders = [e_folder, cp_folder, cts_folder, gp_folder]
+                if not os.path.isdir(e_folder):
+                    for f in folders:
+                        print(f)
+                        os.mkdir(f)
+                
+                src_file = fnr.get_filename(subj, use_source_model_for_sourceloc)
+                if os.path.isfile(src_file):
+                    src = mne.read_source_spaces(src_file)
+                else:
+                    src = mne.setup_source_space(subj, spacing = use_source_model_for_sourceloc, 
+                                                subjects_dir = subjects_dir, 
+                                                n_jobs=n_jobs, 
+                                                verbose=True)
+
+                fwd = mne.make_forward_solution(e.info, src=src, bem=bem_sol,
+                                            trans=trans_file, 
+                                            meg=pick_meg, eeg=pick_eeg, mindist=0.2, 
+                                            ignore_ref=False, 
+                                            n_jobs=n_jobs, verbose=True)
+                             
+                inv = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd, noise_cov=noise_cov, 
+                                            loose=inv_loose_option, depth=0.8)
+    
+                for m in source_loc_methods:
+                    stc_name = "stc_" + m + "_" + eventname
+                    stc_name = 'stc_' + m
+                    
+                    if m == 'dSPM':
+                        stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
+                                    method='dSPM', pick_ori='vector')
+                        surfer_kwargs = dict(hemi='split', subjects_dir=subjects_dir,
+                                    clim=dict(kind='percent', lims=[90, 96, 99.85]),
+                                    views=['lat', 'med'], 
+                                    colorbar=True,
+                                    initial_time=0, time_unit='ms', 
+                                    size=(1500, 1000), smoothing_steps=10)
+                        
+                        brain = stc_name.plot(**surfer_kwargs)
+                        label = str(subj + " - " + eventname + " - Vector solution")
+                        brain.add_text(0.1, 0.9, label, 'title', font_size=10)
+                        
+                        img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '.png')
+                        img_f_name = os.path.join(gp_folder, img_f_name)
+                        brain.save_image(img_f_name)
+                        stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m)
+                        stc_f_name = os.path.join(e_folder, stc_f_name)
+                        e.save(stc_f_name)
+                    
+                    else:
+                        stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
+                                    method=m, pick_ori=minimum_norm_ori)
+                        surfer_kwargs = dict(hemi='split', subjects_dir=subjects_dir,
+                                    clim=dict(kind='percent', lims=[90, 96, 99.85]),
+                                    views=['lat', 'med'], 
+                                    colorbar=True,
+                                    initial_time=0, time_unit='ms', 
+                                    size=(1500, 1000), smoothing_steps=10)
+                        
+                        brain = stc_name.plot(**surfer_kwargs)
+                        label = str(subj + " - " + eventname + " - " +  m)
+                        brain.add_text(0.1, 0.9, label, 'title', font_size=10)
+                        
+                        img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '.png')
+                        img_f_name = os.path.join(gp_folder, img_f_name)
+                        brain.save_image(img_f_name)
+                        stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m)
+                        stc_f_name = os.path.join(e_folder, stc_f_name)
+                        e.save(stc_f_name)
+                        
+                        
+                        if m == "eLORETA":
+                            rh_peaks = get_peak_points(stc_name, hemi='rh', tmin=peaks_tmin, 
+                                                        tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
+                            lh_peaks = get_peak_points(stc_name, hemi='lh', tmin=peaks_tmin, 
+                                                        tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
+                            label = str(subj + " - " + eventname + " - " +  m + " - max. activation points")
+                            brain.add_text(0.1, 0.9, label, 'title', font_size=10)
+                            for p in rh_peaks:
+                                brain.add_foci(p, color='green', coords_as_verts=True, hemi='rh', scale_factor=0.6, alpha=0.9)
+                            for p in lh_peaks:
+                                brain.add_foci(p, color='green', coords_as_verts=True, hemi='lh', scale_factor=0.6, alpha=0.9)
+                            stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m + "_with_peaks")
+                            stc_f_name = os.path.join(e_folder, stc_f_name)
+                            stc_name.save(stc_f_name)
+                            img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '_with_peaks.png')
+                            img_f_name = os.path.join(gp_folder, img_f_name)
+                            brain.save_image(img_f_name)
+
+
+
+
+
+
+
 
 
 """
 To do:
 
 - eLORETA
-- dSPM Vector solution
 - ECD
+- volume source localization
 """

@@ -43,7 +43,11 @@ s_freq = 300
 
 # freesurfer_and_BEM
 do_anatomy = False
-do_hippocampus_segmentation = True
+do_hippocampus_segmentation = False
+
+
+# Coregistration
+use_single_transfile = True   # only do this if files are .trans.tsss
 
 # BEM_spacing = 
 BEM_three_layer = [0.3, 0.006, 0.3]  # 3 layer BEM
@@ -66,9 +70,21 @@ freq_bands = dict(                #the frequency bands of interest for the analy
 use_source_model_for_freq = "ico4"
 
 
-# Source localization
-use_source_model_for_sourceloc = "ico4"
-
+# Source localization                                   # currently only works with use_single_transfile = True 
+#                                                         (see configuration of coregistration)
+use_source_model_for_sourceloc = "ico4"                 # Options = "oct6", "oct5", "ico4", "ico5"
+do_volume_source_loc = False
+use_fwd_model_for_sourceloc = "3-layer-BEM-sol"         # or:   "single-shell-BEM-sol"  
+source_loc_methods = ["dSPM", "eLORETA"]                # "MNE"
+vol_source_loc_methods = "eLOREAT"
+signal_to_noise_ratio = 3.
+minimum_norm_ori = None                                 # None --> norm of loose/free orientations; 
+                                                        # "normal" --> only 90° to surface
+inv_loose_option = 1.                                   # 1. == free; 0.2 == constrained.
+peaks_tmin = -.03
+peaks_tmax = 0.
+peaks_mode = "abs"                                      # How to deal with the sign of the data:  "pos", "neg", or "abs"
+peaks_nr_of_points = 5                                   
 
 
 """

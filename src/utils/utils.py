@@ -157,6 +157,12 @@ class FileNameRetriever():
         trans_name = fif.split("/")[-1].split(".")[0] + "-transfile.fif"
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
+    
+    def get_single_trans_file(self, subj=None):
+        trans_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        trans_name = str(subj) + "-transfile.fif"
+        trans_name = os.path.join(trans_dir, trans_name)
+        return trans_name
 
     def get_event_file(self, subj=None, fif=None):
         fbase = os.path.join(self.bids_root, "derivatives", "sub-" + subj)
@@ -253,3 +259,14 @@ def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, fil
                         clim=dict(kind='percent', lims=(25, 70, 99)))
     return brain
  
+def get_peak_points(stc, hemi='lh', 
+                        tmin=-.02, tmax=0, nr_points=5, 
+                        mode='abs'):
+    '''
+    Returns a list of vertices with peak activation at time points 
+    as given by tmin, tmax and nr_points
+    '''
+    pos = dict()
+    for t in np.linspace(tmin, tmax, nr_points):
+        pos[t], _ = stc.get_peak(hemi=hemi, tmin=(t -0.005), tmax=(t + 0.005), mode=mode)
+    return pos.values()
