@@ -3,7 +3,7 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
-subjects = ["BF28011991"]
+subjects = ["KV08082000"]
 
 #where am I?
 beast =  True
@@ -39,6 +39,13 @@ fir_design = "firwin"
 # Resample
 do_resample = True   #downsampling jitters epoch-data. Don't overdo it + keep Nyquist in mind!
 s_freq = 300
+# Artifacts
+do_ecg_correction_ssp = False
+do_ecg_correction_ica = False
+do_ecg_correction_regression = False
+do_eog_correction_ssp = False
+do_eog_correction_ica = False
+do_eog_correction_regression = False
 
 
 # freesurfer_and_BEM

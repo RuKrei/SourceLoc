@@ -5,7 +5,10 @@
 import os
 from configuration import (subjects, n_jobs, bids_root, data_root, session, 
                             concat_raws, l_freq, h_freq, fir_design, s_freq,
-                            do_filter, do_resample)
+                            do_filter, do_resample, do_ecg_correction_ssp, 
+                            do_ecg_correction_ica, do_ecg_correction_regression,
+                            do_eog_correction_ssp, do_eog_correction_ica,
+                            do_eog_correction_regression)
 import glob
 import mne
 from utils.utils import FileNameRetriever , RawPreprocessor
@@ -123,6 +126,15 @@ if concat_raws == True:
                 print("\nNot doing file concatenation, as concat-file exists...")
         else:
             print("Not doing concatenation, as less than 2 fif-files have been found...")
+            concat_name = fnr.get_filename(subj, "concat")
+            if not os.path.isfile(concat_name):                # Test me!!!!
+                try:
+                    for raw in raw_files:
+                        raw = mne.io.read_raw_fif(raw, preload=True)
+                        raw.save(concat_name)
+                        break
+                except Exception as e:
+                    print(f"Attempt to copypaste rawfile to concat-file failed...\n{e}")
 
 
 
@@ -131,6 +143,8 @@ To do:
 
 save raws with added events in a BIDS compatible manner
 save concat-file in a BIDS compatible manner
+ecg_artifact_correction
+eog_artifact_correction
 
 
 """
