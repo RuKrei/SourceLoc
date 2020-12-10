@@ -4,10 +4,11 @@
 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 from configuration import (subjects, n_jobs, bids_root, use_source_model_for_sourceloc, inv_loose_option,
                             use_fwd_model_for_sourceloc, do_volume_source_loc, source_loc_methods,
                             pick_meg, pick_eeg, concat_raws, signal_to_noise_ratio, minimum_norm_ori,
-                            peaks_tmin, peaks_tmax, peaks_mode, peaks_nr_of_points)
+                            peaks_tmin, peaks_tmax, peaks_mode, peaks_nr_of_points, dip_times)
 import mne
 from utils.utils import FileNameRetriever, RawPreprocessor, get_peak_points
 import glob
@@ -87,7 +88,7 @@ for subj in subjects:
                     stc_name = "stc_" + m + "_" + eventname
                     stc_name = 'stc_' + m
 
-                    """
+
                     if m == 'dSPM':
                         stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
                                     method='dSPM', pick_ori='vector')
@@ -148,19 +149,15 @@ for subj in subjects:
                             img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '_with_peaks.png')
                             img_f_name = os.path.join(gp_folder, img_f_name)
                             brain.save_image(img_f_name)
-"""
+
 
                 # Dipoles
-
-                dip_times = {   'min20ms':  (-0.025,-0.020),
-                                'min15ms':  (-0.020,-0.015),
-                                'min10ms':  (-0.015,-0.010),
-                                'min5ms':  (-0.010,-0.005),
-                                'peak':     (-0.005,0.000)}
 
                 for start, stop in dip_times.values():
                     dip_epoch = e.copy().crop(start, stop).pick('meg')
                     ecd = mne.fit_dipole(dip_epoch, noise_cov, bem_sol, trans=trans_file)[0]
+                    best_idx = np.argmax(ecd.gof)
+                    best_time = ecd.times[best_idx]
                     trans = mne.read_trans(trans_file)
                     mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subj, subjects_dir=subjects_dir)
                     t1_file_name = os.path.join(subjects_dir, subj, 'mri', 'T1.mgz')
@@ -170,15 +167,47 @@ for subj in subjects:
                     title = str(eventname + ' - ECD @ minus ' + stoptime + ' ms')
                     t1_fig = plot_anat(t1_file_name, cut_coords=mri_pos[0], title=title)
                     t1_f_name_pic = ('img_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
-                    t1_f_name_pic = os.path.join(e_folder, t1_f_name_pic)
+                    t1_f_name_pic = os.path.join(e_folder, "generic_pics", t1_f_name_pic)
                     t1_fig.savefig(t1_f_name_pic)
+                    fig_3d = ecd.plot_locations(trans, subj, subjects_dir, mode="orthoview")
+                    fig_3d_pic = ('img_3d_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
+                    fig_3d_pic = os.path.join(e_folder, "generic_pics", fig_3d_pic)
+                    fig_3d.savefig(fig_3d_pic)
+                    plt.close("all")
 
 
 
 
+"""
 
+for start, stop in dip_times.values():
+        dip_epoch = e.copy().crop(start, stop).pick('meg')
+        ecd = mne.fit_dipole(dip_epoch, noise_cov, bem_sol, trans=trans_file)[0]
+        best_idx = np.argmax(ecd.gof)
+        best_time = ecd.times[best_idx]
+        trans = mne.read_trans(trans_file)
+        mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subj, subjects_dir=subjects_dir)
+        t1_file_name = os.path.join(subjects_dir, subj, 'mri', 'T1.mgz')
+        stoptime = str(abs(int(stop*1000)))
+        if stoptime == "5":
+            stoptime = "05"
+        title = str(eventname + ' - ECD @ minus ' + stoptime + ' ms')
 
+        # visualization
+        fig, axes = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=[10., 3.4],
+                                    gridspec_kw=dict(width_ratios=[3, 1],
+                                    top=0.85))
+        
+        fig.suptitle(f"{eventname} - Equivalent current dipole model - minus {stoptime} ms")
+        axes[0,0] = plot_anat(t1_file_name, cut_coords=mri_pos[0], axes=axes[0])
+        axes[0,1] = ecd.plot_locations(trans, subj, subjects_dir, mode="orthoview")
 
+        t1_f_name_pic = ('img_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
+        t1_f_name_pic = os.path.join(e_folder, t1_f_name_pic)
+        fig.savefig(t1_f_name_pic)
+        plt.close("all")
+
+"""
 
 """
 To do:
@@ -186,4 +215,5 @@ To do:
 - eLORETA
 - ECD
 - volume source localization
+- Plot difference between prediction and result: https://mne.tools/stable/auto_tutorials/source-modeling/plot_dipole_fit.html?highlight=ecd
 """
