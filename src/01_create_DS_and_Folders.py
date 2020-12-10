@@ -73,3 +73,13 @@ for subj in subjects:
         print(e)
 
 print_dir_tree(bids_root)
+
+
+
+"""
+
+To do:
+
+add disclaimer + title file to report dir
+
+"""

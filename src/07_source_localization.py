@@ -179,41 +179,8 @@ for subj in subjects:
 
 
 """
-
-for start, stop in dip_times.values():
-        dip_epoch = e.copy().crop(start, stop).pick('meg')
-        ecd = mne.fit_dipole(dip_epoch, noise_cov, bem_sol, trans=trans_file)[0]
-        best_idx = np.argmax(ecd.gof)
-        best_time = ecd.times[best_idx]
-        trans = mne.read_trans(trans_file)
-        mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subj, subjects_dir=subjects_dir)
-        t1_file_name = os.path.join(subjects_dir, subj, 'mri', 'T1.mgz')
-        stoptime = str(abs(int(stop*1000)))
-        if stoptime == "5":
-            stoptime = "05"
-        title = str(eventname + ' - ECD @ minus ' + stoptime + ' ms')
-
-        # visualization
-        fig, axes = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=[10., 3.4],
-                                    gridspec_kw=dict(width_ratios=[3, 1],
-                                    top=0.85))
-        
-        fig.suptitle(f"{eventname} - Equivalent current dipole model - minus {stoptime} ms")
-        axes[0,0] = plot_anat(t1_file_name, cut_coords=mri_pos[0], axes=axes[0])
-        axes[0,1] = ecd.plot_locations(trans, subj, subjects_dir, mode="orthoview")
-
-        t1_f_name_pic = ('img_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
-        t1_f_name_pic = os.path.join(e_folder, t1_f_name_pic)
-        fig.savefig(t1_f_name_pic)
-        plt.close("all")
-
-"""
-
-"""
 To do:
 
-- eLORETA
-- ECD
 - volume source localization
 - Plot difference between prediction and result: https://mne.tools/stable/auto_tutorials/source-modeling/plot_dipole_fit.html?highlight=ecd
 """

@@ -93,6 +93,11 @@ peaks_tmax = 0.
 peaks_mode = "abs"                                      # How to deal with the sign of the data:  "pos", "neg", or "abs"
 peaks_nr_of_points = 5                                   
 
+dip_times = {   'min20ms':  (-0.025,-0.020),            # Time points in Miliseconds for Equivalent current dipole fit
+                'min15ms':  (-0.019,-0.015),
+                'min10ms':  (-0.014,-0.010),
+                'min5ms':  (-0.009,-0.005),
+                'peak':     (-0.004,0.000)}
 
 """
 To do:

@@ -86,12 +86,16 @@ for subj in subjects:
             freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_dors.png')
             freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
             image = brain[band].save_image(freqfilename3d)
-            brain[band] = plot_freq_band_lat(stcs[band], band=band, subject=subj, 
+            brain_lh, brain_rh = plot_freq_band_lat(stcs[band], band=band, subject=subj, 
                                                         subjects_dir=subjects_dir,
                                                         filebase=filebase)
-            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat.png')
+            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_lh.png')
             freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
-            image = brain[band].save_image(freqfilename3d)
+            image = brain_lh.save_image(freqfilename3d)
+
+            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_rh.png')
+            freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
+            image = brain_rh.save_image(freqfilename3d)
         
 
 

@@ -41,6 +41,8 @@ class FileNameRetriever():
                 "spikes"
             MEG-Folder:
                 "meg"
+            Report-Folder:
+                "report"
             
             
 
@@ -135,6 +137,10 @@ class FileNameRetriever():
             fbase = os.path.join(self.bids_root, "derivatives", "sub-" + self.subj)
             megfolder = os.path.join(fbase, "meg")
             return megfolder
+
+        # filepath - Report Folder
+        if file == "report":
+            return os.path.join(fbase, "report")
 
 
     def get_tsss_fifs(self, subj=None):
@@ -254,10 +260,13 @@ def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None, fi
     return brain
 def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
     title = (filebase + ' - Frequenzanalyse - ' + band)
-    brain = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='split',
+    brain_lh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='lh',
                         time_label=title, colormap='inferno', size=(1500, 800),
                         clim=dict(kind='percent', lims=(25, 70, 99)))
-    return brain
+    brain_rh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='rh',
+                        time_label=title, colormap='inferno', size=(1500, 800),
+                        clim=dict(kind='percent', lims=(25, 70, 99)))                    
+    return (brain_lh, brain_rh)
  
 def get_peak_points(stc, hemi='lh', 
                         tmin=-.02, tmax=0, nr_points=5, 
