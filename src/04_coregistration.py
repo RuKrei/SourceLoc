@@ -22,7 +22,7 @@ for subj in subjects:
     fifs = fnr.get_tsss_eve_fifs(subj)
     for fif in fifs:
         if use_single_transfile:
-            transfile = fnr.get_single_trans_file(subj=subj, fif=fif)
+            transfile = fnr.get_single_trans_file(subj=subj)
             subjects_dir = fnr.get_filename(subj=subj, file="subjects_dir")
             if os.path.isfile(transfile):
                 print(f"\n\n\nCoregistration skipped, as transfile for {fif} exists.\n\n\n")
