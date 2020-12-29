@@ -69,6 +69,7 @@ for subj in subjects:
     subjects_dir = fnr.get_filename(subj=subj, file="subjects_dir")
     meg_folder = fnr.get_filename(subj, "meg")
     report_folder = fnr.get_filename(subj, "report")
+    spike_folder = fnr.get_filename(subj, "spikes")
     epos = glob.glob(meg_folder + "/*epo.fif")
     fifs = glob.glob(meg_folder + "/*task-resting*.fif")
     for fif in fifs:
@@ -106,12 +107,15 @@ for subj in subjects:
                 if e == "ignore_me" or e == "AAA" or e.startswith("."):
                     pass
                 else:
+                    cap = e + ' --> Topomaps'
                     viz_eve = epochs[e].average().crop(-0.2, 0.2)
                     times = np.linspace(-0.02, 0.01, 6)
-                    figs = viz_eve.plot_joint(times=times, show=False)
-                    for f in figs:
-                        cap = e + ' --> Topomaps'
-                        report.add_figs_to_section(f, captions=cap, section=e)
+                    fig = viz_eve.plot_joint(times=times, show=False)
+                    report.add_figs_to_section(fig, captions=cap, section=e)
+
+                    #cap = e + ' --> eLORETA with peaks'
+
+
     
 
     # Frequenzverteilung
