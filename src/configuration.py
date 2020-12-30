@@ -3,7 +3,11 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
-subjects = ["KV08082000"]
+
+import os
+
+subjects = ["BF28011991test"]     # "*" means every subject in data_root
+
 
 #where am I?
 beast =  True
@@ -12,12 +16,16 @@ candice = False
 # BIDS inputs
 if beast:
     bids_root = "/home/idrael/DATA/MEG/BIDS_clinic"   #beast
-    data_root = "/home/idrael/DATA/MEG/clinic"    #beast
+    data_root = "/home/idrael/DATA/MEG/clinic"        #beast
 
 if candice:
     bids_root = "/Users/idrael/Playground/BIDS_clinic"    #candice
     data_root = "/Users/idrael/Playground/MEG/"           #candice
+
 session = "resting"
+
+if subjects == ["*"]:
+    subjects = os.listdir(data_root)
 
 # Processing
 if beast:

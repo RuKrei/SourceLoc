@@ -16,7 +16,7 @@ if do_anatomy == True:
     reconall = ReconAll()
     reconall_subfields = ReconAll()
     for subj in subjects:
-        anafolder = os.path.join(data_root, subj, "data", "anat", subj)
+        anafolder = os.path.join(data_root, subj)# , "data", "anat", subj)
         nii_file = glob.glob(anafolder + "/*.nii*")
         subjects_dir = os.path.join(bids_root, "derivatives", "sub-" + subj, "freesurfer")
         reconall.inputs.subject_id = subj

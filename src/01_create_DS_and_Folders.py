@@ -6,6 +6,7 @@ from mne_bids import BIDSPath, write_raw_bids, print_dir_tree, write_anat
 import os
 from configuration import subjects, session, bids_root, data_root
 import glob
+import mne
 from dicom2nifti import convert_directory
 from shutil import copyfile
 
@@ -59,10 +60,10 @@ for subj in subjects:
             newname = newname.basename + ".fif"
             destination = os.path.join(fmeg, newname)
             copyfile(rawfile, destination)
-        #else:
-        #    raw = mne.io.read_raw(rawfile)
-        #    bids_path.update(run=run)
-        #    write_raw_bids(raw, bids_path, overwrite=True)    # this breaks with fif-files due to an IAS-Key Error
+        else:
+            raw = mne.io.read_raw(rawfile)
+            bids_path.update(run=run, task="rest")
+            write_raw_bids(raw, bids_path, overwrite=True)    # this breaks --> syst-Key Error - https://github.com/mne-tools/mne-bids/issues/666
     convert_dcm_folder(subj)
     anafolder = os.path.join(data_root, subj, "data", "anat", subj)
     niis = glob.glob(anafolder + "/*.nii*")
