@@ -127,14 +127,14 @@ for subj in subjects:
             if str(band) in freq_file.split("/")[-1]:
                 for xhemi_file in xhemi_files:
                     if str(band) in xhemi_file.split("/")[-1]:
-                        fig = plt.Figure()
+                        fig = plt.Figure(facecolor=(0, 0, 0))
                         #fig.suptitle((' Frequenzverteilung - ' + str(band)), fontsize=12)
                         fig.set_figwidth(15)
-                        fig.set_figheight(15)
+                        fig.set_figheight(9)
                         
                         # dorsal
                         ax1 = fig.add_subplot(2, 2, 3)
-                        ax1.set_title('dorsal')
+                        ax1.set_title('Dorsal view', color=(1,1,1))
                         ax1.set_xticks([])
                         ax1.set_yticks([])
                         mpimg_img = mpimg.imread(freq_file) 
@@ -142,7 +142,7 @@ for subj in subjects:
 
                         # lateral
                         ax2 = fig.add_subplot(2, 2, 1)
-                        ax2.set_title('left hemisphere')
+                        ax2.set_title('Left hemisphere', color=(1,1,1))
                         ax2.set_xticks([])
                         ax2.set_yticks([])
                         lat_file = (freq_file.split("dors.png")[0] + "lat_lh.png")
@@ -150,7 +150,7 @@ for subj in subjects:
                         ax2.imshow(mpimg_img)
 
                         ax3 = fig.add_subplot(2, 2, 2)
-                        ax3.set_title('right hemisphere')
+                        ax3.set_title('Right hemisphere', color=(1,1,1))
                         ax3.set_xticks([])
                         ax3.set_yticks([])
                         lat_file = (freq_file.split("dors.png")[0] + "lat_rh.png")
@@ -159,7 +159,7 @@ for subj in subjects:
 
                         # xhemi
                         ax4 = fig.add_subplot(2, 2, 4)
-                        ax4.set_title('xhemi')
+                        ax4.set_title('Cross hemisphere comparison', color=(1,1,1))
                         ax4.set_xticks([])
                         ax4.set_yticks([])
                         mpimg_img = mpimg.imread(xhemi_file) 
