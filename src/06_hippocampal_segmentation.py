@@ -7,24 +7,19 @@ from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data
                         do_hippocampus_segmentation)
 import glob
 from utils.utils import FileNameRetriever
+import subprocess
 
                             
 fnr = FileNameRetriever(bids_root)
 
+def run_command(command):
+    subprocess.run(command, shell=True, capture_output=True, check=True)
+
 if do_hippocampus_segmentation:
     for subj in subjects:  
-        anafolder = os.path.join(data_root, subj, "data", "anat", subj)
-        nii_file = glob.glob(anafolder + "/*.nii*")
-        subjects_dir = fnr.get_filename(subj, file="subjects_dir")
-        reconall_subfields = ReconAll()
-        reconall_subfields.inputs.subject_id = subj
-        reconall_subfields.inputs.directive = 'all'
-        reconall_subfields.inputs.subjects_dir = subjects_dir
-        reconall_subfields.inputs.T1_files = nii_file
-        reconall_subfields.inputs.hippocampal_subfields_T1 = True
-        reconall_subfields.inputs.openmp = openmp
-        reconall_subfields.cmdline
-
+        print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
+        command = str("segmentHA_T1.sh " + subj)
+        run_command(command)
 
 
 
@@ -43,6 +38,7 @@ http://dx.doi.org/10.1016/j.neuroimage.2015.04.042
 """
 To do:
 use freesurfers segmentHA_T1.sh $subject script
+use freesurfers asegstats2table for subjects (bash) and extract from there
 visualize single subjects segmentation and statistics:
     right to left difference?
     hippocampi too small relative to brain volume?

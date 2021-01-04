@@ -83,4 +83,13 @@ To do:
 
 add disclaimer + title file to report dir
 
+Events should be added to fif-files before they are saved in a BIDS compatible manner (makes things way easier)
+
+Data input should be one folder (subjectname) with following contents:
+ - 1000*/100*/1000* (Dicom-Folder)
+ - .fifs (rawfiles)
+ - tsss.fifs (trans-tsss-files)
+ - _Events.csv or _Events.txt - Files (Eventfiles)
+---> Dicoms become niftis, tsss-Files are merged with eventfiles + resampled and BIDSified (processing="tsss-eve")
+            raw files remain untouched. - Everything is saved via mne-bids
 """

@@ -6,12 +6,12 @@
 
 import os
 
-subjects = ["BF28011991test"]     # "*" means every subject in data_root
+subjects = ["BF28011991", "RK21051985"]     # "*" means every subject in data_root
 
 
 #where am I?
-beast =  True
-candice = False
+beast =  False
+candice = True
 
 # BIDS inputs
 if beast:
@@ -58,7 +58,7 @@ do_eog_correction_regression = False
 
 # freesurfer_and_BEM
 do_anatomy = False
-do_hippocampus_segmentation = False
+do_hippocampus_segmentation = True
 
 
 # Coregistration
