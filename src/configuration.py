@@ -6,7 +6,7 @@
 
 import os
 
-subjects = ["BF28011991", "RK21051985"]     # "*" means every subject in data_root
+subjects = ["BF28011991"]     # "*" means every subject in data_root
 
 
 #where am I?
@@ -19,8 +19,8 @@ if beast:
     data_root = "/home/idrael/DATA/MEG/clinic"        #beast
 
 if candice:
-    bids_root = "/Users/idrael/Playground/BIDS_clinic"    #candice
-    data_root = "/Users/idrael/Playground/MEG/"           #candice
+    bids_root = "/Users/idrael/Playground/SourceLocTest/BIDSTestData"           #candice
+    data_root = "/Users/idrael/Playground/SourceLocTest/input_folder"           #candice
 
 session = "resting"
 
@@ -57,7 +57,7 @@ do_eog_correction_regression = False
 
 
 # freesurfer_and_BEM
-do_anatomy = False
+do_anatomy = True
 do_hippocampus_segmentation = True
 
 

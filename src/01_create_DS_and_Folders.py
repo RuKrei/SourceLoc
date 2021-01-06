@@ -2,13 +2,14 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
-from mne_bids import BIDSPath, write_raw_bids, print_dir_tree, write_anat
+from mne_bids import BIDSPath, write_raw_bids, print_dir_tree, write_anat, make_dataset_description
 import os
+import mne_bids
 from configuration import subjects, session, bids_root, data_root
+from utils.utils import RawPreprocessor
 import glob
 import mne
 from dicom2nifti import convert_directory
-from shutil import copyfile
 
 
 def convert_dcm_folder(subj):
@@ -19,8 +20,9 @@ def convert_dcm_folder(subj):
     except Exception as e:
         print(e)
 
+prepper = RawPreprocessor()
 
-# Add derivatives folder structure + bids_root directory 
+# 1. Add derivatives folder structure + bids_root directory, if it doesn't exist 
 for subj in subjects:
     fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
     fmeg = os.path.join(fbase, "meg")
@@ -31,47 +33,57 @@ for subj in subjects:
     finv = os.path.join(fbase, "inverse_model")
     spikes = os.path.join(fbase, "spikes")
     freq = os.path.join(fbase, "frequency_distribution")
-    fDICS = os.path.join(freq, "DICS")
     fMNE = os.path.join(freq, "MNE")
     conn = os.path.join(fbase, "connectivity")
-    cnonspike = os.path.join(conn, "nonspike_all_to_all")
-    cspike = os.path.join(conn, "spike")    # this needs to be filled according to spike name later
     feve = os.path.join(fbase, "eventfiles")
     ftrans = os.path.join(fbase, "trans_files")
     freport = os.path.join(fbase, "report")
     
-    folder_list = [fbase, fmeg, fsrc, fanat, fprep, ffwd, finv, spikes, freq, fDICS, fMNE, conn, cnonspike, cspike, feve, ftrans, freport]
+    folder_list = [fbase, fmeg, fsrc, fanat, fprep, ffwd, finv, spikes, freq, fMNE, conn, feve, ftrans, freport]
 
     for fld in folder_list:
         if not os.path.exists(fld):
             os.makedirs(fld, exist_ok=True)
 
 
-# BIDSify
+# 2. BIDSify data
 for subj in subjects:
-    data_dir = os.path.join(data_root, subj, "data")
+    data_dir = os.path.join(data_root, subj)
     raws = glob.glob(data_dir + "/*.fif")
-    bids_path = BIDSPath(subject=subj, session=session, task="resting", root=bids_root)
+    bids_path = BIDSPath(subject=subj, session=session, task="resting", root=bids_root, processing=None)
     fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
     fmeg = os.path.join(fbase, "meg")
     for run, rawfile in enumerate(raws):
         if "tsss" in rawfile:
-            newname = bids_path.update(processing="tsss", run=run)
-            newname = newname.basename + ".fif"
-            destination = os.path.join(fmeg, newname)
-            copyfile(rawfile, destination)
+            # --> search for matching eventfile and combine
+            eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+            if not os.path.isfile(eve_name):
+                eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+            if os.path.isfile(eve_name):
+                print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
+                raw = mne.io.read_raw(rawfile, preload=True)
+                event_file, event_dict = prepper.transform_eventfile(eve_name)
+                raw.add_events(event_file)
+                bids_path.update(processing="eve")
+                raw.save(rawfile, overwrite=True)
         else:
-            raw = mne.io.read_raw(rawfile)
-            bids_path.update(run=run, task="rest")
-            write_raw_bids(raw, bids_path, overwrite=True)    # this breaks --> syst-Key Error - https://github.com/mne-tools/mne-bids/issues/666
-    convert_dcm_folder(subj)
-    anafolder = os.path.join(data_root, subj, "data", "anat", subj)
-    niis = glob.glob(anafolder + "/*.nii*")
-    try:
-        for n in niis:
-            write_anat(n, bids_path=bids_path, overwrite=True)
-    except Exception as e:
-        print(e)
+            print("\n\nNo eventfile found for {rawfile}, processing as raw file.\n\n")
+            bids_path.update(processing=None)
+            # write raw BIDS, as below
+        raw = mne.io.read_raw(rawfile)
+        mne_bids.write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
+    
+convert_dcm_folder(subj)
+anafolder = os.path.join(data_root, subj, subj)
+niis = glob.glob(anafolder + "/*.nii*")
+try:
+    for n in niis:
+        write_anat(n, bids_path=bids_path, overwrite=True)
+except Exception as e:
+    print(e)
+
+# 3. DataSet description
+make_dataset_description(bids_root, name="CDK Epilepsy Dataset", data_license="closed", authors="Rudi Kreidenhuber", overwrite=True)
 
 print_dir_tree(bids_root)
 
@@ -81,15 +93,6 @@ print_dir_tree(bids_root)
 
 To do:
 
-add disclaimer + title file to report dir
+add disclaimer + title file to report dir --> is accessed from the .extras - Directory
 
-Events should be added to fif-files before they are saved in a BIDS compatible manner (makes things way easier)
-
-Data input should be one folder (subjectname) with following contents:
- - 1000*/100*/1000* (Dicom-Folder)
- - .fifs (rawfiles)
- - tsss.fifs (trans-tsss-files)
- - _Events.csv or _Events.txt - Files (Eventfiles)
----> Dicoms become niftis, tsss-Files are merged with eventfiles + resampled and BIDSified (processing="tsss-eve")
-            raw files remain untouched. - Everything is saved via mne-bids
 """

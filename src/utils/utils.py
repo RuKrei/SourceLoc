@@ -170,7 +170,7 @@ class FileNameRetriever():
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
 
-    def get_event_file(self, subj=None, fif=None):
+    def get_event_file(self, subj=None, fif=None): # no longer needed in final version
         fbase = os.path.join(self.bids_root, "derivatives", "sub-" + subj)
         event_dir = os.path.join(fbase, "eventfiles")
         eve_name = fif.split("/")[-1].split(".")[0] + "-eve.csv"
