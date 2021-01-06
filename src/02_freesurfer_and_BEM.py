@@ -2,36 +2,85 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
+from genericpath import isdir
+from os.path import isfile
 from nipype.interfaces.freesurfer import ReconAll
 import os
-from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data_root,
+from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data_root, do_hippocampus_segmentation,
                             BEM_single_shell, BEM_three_layer, spacings, volume_label, single_volume)
 import glob
 import mne
 from utils.utils import FileNameRetriever
+import shutil
+import subprocess
+
+subjects_dir = os.environ.get("SUBJECTS_DIR")
+fnr = FileNameRetriever(bids_root)
+
+def recursive_overwrite(src, dest, ignore=None):
+    if os.path.isdir(src):
+        if not os.path.isdir(dest):
+            os.makedirs(dest)
+        files = os.listdir(src)
+        if ignore is not None:
+            ignored = ignore(src, files)
+        else:
+            ignored = set()
+        for f in files:
+            if f not in ignored:
+                recursive_overwrite(os.path.join(src, f), 
+                                    os.path.join(dest, f), 
+                                    ignore)
+    else:
+        shutil.copyfile(src, dest)
+
+def run_shell_command(command):
+    subprocess.run(command, shell=True, capture_output=True, check=True)
 
 
-# freesurfer
+# 1. freesurfer
 if do_anatomy == True:
     reconall = ReconAll()
-    reconall_subfields = ReconAll()
     for subj in subjects:
-        anafolder = os.path.join(data_root, subj)# , "data", "anat", subj)
-        nii_file = glob.glob(anafolder + "/*.nii*")
-        subjects_dir = os.path.join(bids_root, "derivatives", "sub-" + subj, "freesurfer")
-        reconall.inputs.subject_id = subj
-        reconall.inputs.T1_files = nii_file
-        reconall.inputs.directive = 'all'
-        #reconall.inputs.hippocampal_subfields_T1 = True
-        reconall.inputs.subjects_dir = subjects_dir
-        reconall.inputs.openmp = openmp
-        reconall.run()
+        # check if freesurfer segmentation was already performed
+        this_subjects_dir = fnr.get_filename(subj, "subjects_dir")
+        freesurfered = os.path.join(subjects_dir, "sub-" + subj)
+        if not isdir(freesurfered):
+            anafolder = os.path.join(bids_root, "sub-" + subj, "ses-resting", "anat")
+            nii_file = glob.glob(anafolder + "/*.nii*")[0]
+            subjects_dir = subjects_dir
+            reconall.inputs.subject_id = "sub-" + subj
+            reconall.inputs.T1_files = nii_file
+            reconall.inputs.directive = 'all'
+            reconall.inputs.subjects_dir = subjects_dir
+            reconall.inputs.openmp = openmp
+            reconall.inputs.flags = "-3T"
+            reconall.run()
+        else:
+            print(f"A freesurfer segmentation of subject {subj} already exists in {subjects_dir}")
 
+        if do_hippocampus_segmentation:
+            hippofile = os.path.join(freesurfered, "mri", "lh.hippoSfVolumes-T1.v21.txt")
+            if not isfile(hippofile):
+                print(f"Now running hippocampal segmentation for subject: sub-{subj}\nThis might take some time")
+                hipposeg = str("segmentHA_T1.sh sub-" + subj)
+                run_shell_command(hipposeg)
+            else:
+                print(f"Omitting hippocampal segmentation for subject sub-{subj}, as it already exists")
+           
+        local_copy = os.path.join(this_subjects_dir, "sub-" + subj)
+        if not isdir(local_copy):
+            print(f"Copying freesufer folder of sub-{subj} to {this_subjects_dir}")
+            recursive_overwrite(freesurfered, local_copy)
+
+
+        
+"""
         
         
 
 
-fnr = FileNameRetriever(bids_root)
+
 
 
 # Head-Model
@@ -98,3 +147,4 @@ for subj in subjects:
         bem_sol = mne.make_bem_solution(bem)
         mne.write_bem_solution(bem_sol_filename, bem_sol, overwrite=True)
 
+"""

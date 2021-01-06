@@ -86,13 +86,3 @@ except Exception as e:
 make_dataset_description(bids_root, name="CDK Epilepsy Dataset", data_license="closed", authors="Rudi Kreidenhuber", overwrite=True)
 
 print_dir_tree(bids_root)
-
-
-
-"""
-
-To do:
-
-add disclaimer + title file to report dir --> is accessed from the .extras - Directory
-
-"""
