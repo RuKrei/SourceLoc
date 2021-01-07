@@ -18,7 +18,7 @@ def run_command(command):
 if do_hippocampus_segmentation:
     for subj in subjects:  
         print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
-        command = str("segmentHA_T1.sh " + subj)
+        command = "segmentHA_T1.sh sub-" + subj
         run_command(command)
 
 

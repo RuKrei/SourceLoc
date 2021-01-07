@@ -23,6 +23,7 @@ if candice:
     data_root = "/Users/idrael/Playground/SourceLocTest/input_folder"           #candice
 
 session = "resting"
+derivatives_root = os.path.join(bids_root, "derivatives")
 
 if subjects == ["*"]:
     subjects = os.listdir(data_root)
@@ -58,7 +59,7 @@ do_eog_correction_regression = False
 
 # freesurfer_and_BEM
 do_anatomy = True
-do_hippocampus_segmentation = True
+do_hippocampus_segmentation = False
 
 
 # Coregistration

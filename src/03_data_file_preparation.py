@@ -15,7 +15,7 @@ from utils.utils import FileNameRetriever , RawPreprocessor
 import utils.utils as u
 import pandas as pd
 from shutil import copyfile
-from mne_bids import BIDSPath, write_raw_bids
+from mne_bids import BIDSPath, write_raw_bids, read_raw_bids
 
 fnr = FileNameRetriever(bids_root)
 prepper = RawPreprocessor()
@@ -24,6 +24,8 @@ prepper = RawPreprocessor()
 # Combine eventfile + raw
 
 for subj in subjects:
+    if not subj.startswith("sub-"):
+        subj = "sub-" + subj
     subj_root = os.path.join (data_root, subj)
     raws = glob.glob(subj_root + "/data/*_tsss.fif")
     print(f"raw_files: {raws}")

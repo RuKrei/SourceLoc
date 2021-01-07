@@ -54,8 +54,7 @@ class FileNameRetriever():
         
 
         # basic folder structure
-        fbase = os.path.join(self.bids_root, "derivatives", "sub-" + self.subj)
-        fmeg = os.path.join(fbase, "meg")
+        fbase = os.path.join(self.bids_root, subj)
         fsrc = os.path.join(fbase, "source_model")
         fanat = os. path.join(fbase, "freesurfer")
         fprep = os.path.join(fbase, "preprocessing")
@@ -63,11 +62,8 @@ class FileNameRetriever():
         finv = os.path.join(fbase, "inverse_model")
         spikes = os.path.join(fbase, "spikes")
         freq = os.path.join(fbase, "frequency_distribution")
-        fDICS = os.path.join(freq, "DICS")
         fMNE = os.path.join(freq, "MNE")
         conn = os.path.join(fbase, "connectivity")
-        cnonspike = os.path.join(conn, "nonspike_all_to_all")
-        cspike = os.path.join(conn, "spike")    # this needs to be filled according to spike name later
         feve = os.path.join(fbase, "eventfiles")
         freport = os.path.join(fbase, "report")
 
@@ -100,26 +96,18 @@ class FileNameRetriever():
         
         # filepath - concat file
         if file == "concat":
-            tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+            tsss_dir = os.path.join(self.bids_root, + subj, "meg")
             concat_fname = subj + "-concat-raw-tsss.fif"
             concat = os.path.join(tsss_dir, concat_fname)
             return concat
-        
-        # filepath - event file
-        if file == "event_folder":
-            return os.path.join(fbase, "eventfiles")
 
          # filepath - Subjects Directory
         if file == "subjects_dir":
-            return os.path.join(self.bids_root, "derivatives", "sub-" + subj, "freesurfer")
+            return os.path.join(self.bids_root, subj, "freesurfer")
         
         # filepath - Frequency distribution - MNE
         if file=="freqMNE":
             return os.path.join(freq, "MNE")
-        
-        # filepath - Frequency distribution - DICS
-        if file=="freqDICS":
-            return os.path.join(freq, "DICS")
         
         # filepath - Forward solution
         if file=="fwd":
@@ -128,15 +116,9 @@ class FileNameRetriever():
         
         # filepath - Spike Folder
         if file=="spikes":
-            fbase = os.path.join(self.bids_root, "derivatives", "sub-" + self.subj)
+            fbase = os.path.join(self.bids_root, subj)
             spikes = os.path.join(fbase, "spikes")
             return spikes
-
-        # filepath - meg
-        if file=="meg":
-            fbase = os.path.join(self.bids_root, "derivatives", "sub-" + self.subj)
-            megfolder = os.path.join(fbase, "meg")
-            return megfolder
 
         # filepath - Report Folder
         if file == "report":
@@ -144,43 +126,34 @@ class FileNameRetriever():
 
 
     def get_tsss_fifs(self, subj=None):
-        tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        tsss_dir = os.path.join(self.bids_root, subj, "meg")
         fifs = glob.glob(tsss_dir + "/*tsss.fif")
         return fifs
     
     def get_tsss_eve_fifs(self, subj=None):
-        tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        tsss_dir = os.path.join(self.bids_root, subj, "meg")
         fifs = glob.glob(tsss_dir + "/*tsss-eve.fif")
         return fifs
     
     def get_concat_fif(self, subj=None):
-        tsss_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        tsss_dir = os.path.join(self.bids_root, subj, "meg")
         fifs = glob.glob(tsss_dir + "/*concat-raw-tsss.fif")
         return fifs
     
     def get_trans_file(self, subj=None, fif=None):
-        trans_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        trans_dir = os.path.join(self.bids_root, subj, "meg")
         trans_name = fif.split("/")[-1].split(".")[0] + "-transfile.fif"
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
     
     def get_single_trans_file(self, subj=None):
-        trans_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+        trans_dir = os.path.join(self.bids_root, subj, "meg")
         trans_name = str(subj) + "-transfile.fif"
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
 
-    def get_event_file(self, subj=None, fif=None): # no longer needed in final version
-        fbase = os.path.join(self.bids_root, "derivatives", "sub-" + subj)
-        event_dir = os.path.join(fbase, "eventfiles")
-        eve_name = fif.split("/")[-1].split(".")[0] + "-eve.csv"
-        if not os.path.isfile(eve_name):
-            eve_name = fif.split("/")[-1].split(".")[0] + "-eve.txt"
-        eve_name = os.path.join(event_dir, eve_name)
-        return eve_name
-
-    def get_epochs_file(self, subj=None, fif=None):
-        epo_dir = os.path.join(self.bids_root, "derivatives", "sub-" + subj, "meg")
+    def get_epochs_file(self, subj=None, fif=None): # becomes processing=epo
+        epo_dir = os.path.join(self.bids_root, subj, "meg")
         epo_name = fif.split("/")[-1].split(".")[0] + "-epo.fif"
         epo_name = os.path.join(epo_dir, epo_name)
         return epo_name
