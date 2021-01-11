@@ -49,10 +49,16 @@ fir_design = "firwin"
 do_resample = True   #downsampling jitters epoch-data. Don't overdo it + keep Nyquist in mind!
 s_freq = 300
 # Artifacts
-do_ecg_correction_ssp = False
+n_grad = 1          # number of Vectors to apply for gradiometers
+n_mag = 1           # number of Vectors to apply for magnetometers
+n_eeg = 1           # number of Vectors to apply for eeg
+ecg_channel=None
+do_ecg_correction_ssp = True
 do_ecg_correction_ica = False
 do_ecg_correction_regression = False
-do_eog_correction_ssp = False
+
+eog_channel=None
+do_eog_correction_ssp = True
 do_eog_correction_ica = False
 do_eog_correction_regression = False
 
@@ -88,6 +94,8 @@ use_source_model_for_freq = "ico4"
 
 # Source localization                                   # currently only works with use_single_transfile = True 
 #                                                         (see configuration of coregistration)
+do_source_loc = True                                    # perform source localization fro events
+
 use_source_model_for_sourceloc = "ico4"                 # Options = "oct6", "oct5", "ico4", "ico5"
 do_volume_source_loc = False
 use_fwd_model_for_sourceloc = "3-layer-BEM-sol"         # or:   "single-shell-BEM-sol"  
@@ -97,7 +105,7 @@ signal_to_noise_ratio = 3.
 minimum_norm_ori = None                                 # None --> norm of loose/free orientations; 
                                                         # "normal" --> only 90° to surface
 inv_loose_option = 1.                                   # 1. == free; 0.2 == constrained.
-peaks_tmin = -.03
+peaks_tmin = -.025
 peaks_tmax = 0.
 peaks_mode = "abs"                                      # How to deal with the sign of the data:  "pos", "neg", or "abs"
 peaks_nr_of_points = 5                                   
