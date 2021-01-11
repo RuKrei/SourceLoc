@@ -38,3 +38,11 @@ for subj in subjects:
             else:
                 print(f"\n\n\nTransfile should be called: {transfile}\n\n\n")
                 mne.gui.coregistration(subject=subj, subjects_dir=subjects_dir, inst=fif)
+
+
+# To do:
+# - if "tsssTrans" in processing --> one transfile
+# - if "raw" in processing --> specific transfile
+#
+# maybe only use processing="tsssTransEvePreproc" for frequency spectrum at first
+#

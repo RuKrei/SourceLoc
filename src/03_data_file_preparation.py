@@ -71,11 +71,9 @@ for subj in subjects:
         savename = os.path.join(preproc_folder, "EOG Topomap")
         plt.savefig(fig, savename)
 
-
-########### to do:
-# update BIDS with processing-flag + save
-
-
+    # save
+    bids_derivatives.update(processing="tsssTransEvePreproc")
+    write_raw_bids(raw, bids_derivatives, overwrite=True)                           ########### to do: does this include event data/ annotations???
 
 
 # Epochs
@@ -83,69 +81,8 @@ for subj in subjects:
     if do_source_loc:
         epochs = mne.Epochs(raw, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
         print(f"Epochs metadata = {epochs.metadata}")
-
-
-
-
-
-        epochs_filename = fnr.get_epochs_file(subj, raw_name)
-        if event_dict is not None and isinstance(event_dict, dict):
-            if not os.path.isfile(epochs_filename):
-                raw = mne.io.read_raw_fif(raw_name, preload=True)
-                events = mne.find_events(raw)
-                epochs = mne.Epochs(raw, events, event_dict, tmin=-1.5, tmax=1, baseline=(-1.5,-1), 
-                                                #reject=reject, 
-                                                on_missing = 'ignore')
-                print(f"Epochs metadata = {epochs.metadata}")
-                epochs.save(epochs_filename, overwrite=True)
-            else:
-                epochs = mne.read_epochs(epochs_filename)
-                print(f"Epochs metadata = {epochs.metadata}")
-            try:
-                del event_dict
-            except Exception as e:
-                print(f"Something went wrong while epoching {raw_name}")
-
-
-
-
-
-# concatenate
-
-if concat_raws == True:
-    for subj in subjects:
-        raw_files = fnr.get_tsss_eve_fifs(subj)
-        if len(raw_files) > 1:
-            print(f"Concatenating the following files:\n {[raw_files]}")
-            concat_name = fnr.get_filename(subj, "concat")
-            if not os.path.isfile(concat_name):
-                raws = []
-                for idx, raw in enumerate(raw_files):
-                    rawname = "raw-" + str(idx)
-                    rawname = mne.io.read_raw_fif(raw, preload=True)
-                    raws.append(rawname)
-
-                raw_concat = mne.concatenate_raws(raws)   # should also work with raw_concat = mne.concatenate_raws([raw_files])???
-
-                if do_filter:
-                    raw_concat = prepper.filter_raw(raw_concat, l_freq=l_freq, h_freq=h_freq, fir_design=fir_design, n_jobs=n_jobs)
-                if do_resample:
-                    raw_concat = prepper.resample_raw(raw_concat, s_freq=s_freq)
-                raw_concat.save(concat_name, overwrite=True)   # This should become a BIDS compatible file save later
-                print(f"\nConcatenated file info:\n{raw_concat.info}")
-            else:
-                print("\nNot doing file concatenation, as concat-file exists...")
-        else:
-            print("Not doing concatenation, as less than 2 fif-files have been found...")
-            concat_name = fnr.get_filename(subj, "concat")
-            if not os.path.isfile(concat_name):                # Test me!!!!
-                try:
-                    for raw in raw_files:
-                        raw = mne.io.read_raw_fif(raw, preload=True)
-                        raw.save(concat_name)
-                        break
-                except Exception as e:
-                    print(f"Attempt to copypaste rawfile to concat-file failed...\n{e}")
+        bids_derivatives.update(processing="tsssTransEpoPreproc")
+        write_raw_bids(raw, bids_derivatives, overwrite=True)                     
 
 
 
