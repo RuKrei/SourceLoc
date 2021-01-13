@@ -208,19 +208,36 @@ class RawPreprocessor():
         return raw
 
 def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
-    title = (filebase + ' - Frequenzanalyse - ' + band)
+    title = str(filebase) + " " + str(band)
     brain = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='both',
                         time_label=title, colormap='inferno', 
+                        add_data_kwargs=dict(time_label_size=10),
                         clim=dict(kind='percent', lims=(25, 70, 99)))
     brain.show_view(dict(azimuth=0, elevation=0), roll=0)
     return brain
 def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
-    title = (filebase + ' - Frequenzanalyse - ' + band)
+    title = str(filebase) + " " + str(band)
     brain_lh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='lh',
                         time_label=title, colormap='inferno', size=(1500, 800),
+                        add_data_kwargs=dict(time_label_size=10),
                         clim=dict(kind='percent', lims=(25, 70, 99)))
     brain_rh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='rh',
                         time_label=title, colormap='inferno', size=(1500, 800),
+                        add_data_kwargs=dict(time_label_size=10),
+                        clim=dict(kind='percent', lims=(25, 70, 99)))                    
+    return (brain_lh, brain_rh)
+
+def plot_freq_band_med(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
+    title = str(filebase) + " " + str(band)
+    brain_lh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='lh',
+                        views='medial',
+                        time_label=title, colormap='inferno', size=(1500, 800),
+                        add_data_kwargs=dict(time_label_size=10),
+                        clim=dict(kind='percent', lims=(25, 70, 99)))
+    brain_rh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='rh',
+                        time_label=title, colormap='inferno', size=(1500, 800),
+                        add_data_kwargs=dict(time_label_size=10),
+                        views='medial',
                         clim=dict(kind='percent', lims=(25, 70, 99)))                    
     return (brain_lh, brain_rh)
  
