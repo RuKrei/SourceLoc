@@ -142,13 +142,13 @@ class FileNameRetriever():
     
     def get_trans_file(self, subj=None, fif=None):
         trans_dir = os.path.join(self.bids_root, subj, "meg")
-        trans_name = fif.split("/")[-1].split(".")[0] + "-transfile.fif"
+        trans_name = fif.split("/")[-1].split(".")[0] + "-trans.fif"
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
     
     def get_single_trans_file(self, subj=None):
-        trans_dir = os.path.join(self.bids_root, subj, "meg")
-        trans_name = str(subj) + "-transfile.fif"
+        trans_dir = os.path.join(self.bids_root, subj, "trans_files")
+        trans_name = str(subj) + "-trans.fif"
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
 
@@ -197,24 +197,6 @@ class RawPreprocessor():
             val = i + 1
             event_dict[key] = val
         return new_eve_file, event_dict
-    
-    def combine_events_w_raw(self, raw, event_file):
-        """
-        Receives the eventfile as processed by RawPreprocessor.transform_eventfile() + loaded raw file.
-        Returns raw with events added
-        """
-        print(f"event_file --> {event_file.iloc[:,0]}")
-        raw = raw.add_events(event_file)
-        return raw
-
-    def get_event_file(self, event_folder, raw_filename):
-        rawfile = raw_filename.split("/")[-1].split(".")[0]
-        eventfile = os.path.join(event_folder, rawfile + "_Events.csv")
-        if os.path.isfile(eventfile):
-            return eventfile
-        eventfile = os.path.join(event_folder, rawfile + "_Events.txt")
-        if os.path.isfile(eventfile):
-            return eventfile
     
     def filter_raw(self, raw, l_freq=1, h_freq=70, fir_design="firwin", n_jobs=1):
         raw.load_data()

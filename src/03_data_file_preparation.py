@@ -90,12 +90,9 @@ for subj in subjects:
 """
 To do:
 
-if multiple files, when loading them there should be a run flag --> has to be added
-
-save raws with added events in a BIDS compatible manner
-save concat-file in a BIDS compatible manner
-ecg_artifact_correction
-eog_artifact_correction
+if multiple files:
+    when loading them there should be a run flag --> has to be added
+    save a concat-file in a BIDS compatible manner
 
 
 """

@@ -2,13 +2,35 @@
 # License: BSD (3-clause)
 
 import os
-from configuration import subjects, bids_root, concat_raws, use_single_transfile
+from os.path import isfile
+from configuration import subjects, derivatives_root, concat_raws, use_single_transfile, session
 import mne
 from utils.utils import FileNameRetriever
+from mne_bids import BIDSPath, read_raw_bids
 
-fnr = FileNameRetriever(bids_root)
+fnr = FileNameRetriever(derivatives_root)
+subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 for subj in subjects:
+    subsubj = "sub-" + subj
+    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", root=derivatives_root, processing="tsssTransEpoPreproc")
+    print(f"\n\nThe following files with processing= \"tsssTransEpoPreproc\" were found: {bids_derivatives.match()}\n\n")
+    #load data
+    raw = read_raw_bids(bids_path=bids_derivatives)
+    if use_single_transfile == True:
+        transfile = fnr.get_single_trans_file(subsubj)
+        if isfile(transfile):
+            print(f"Skipping coregistration, because a transfile ({transfile}) already exists")
+        else:
+            print(f"\n\n\n--> Transfile should be called: {transfile}\n\n\n")
+            mne.gui.coregistration(subject=subsubj, subjects_dir=subjects_dir, inst=raw.filenames[0])
+
+
+
+
+
+    """
+    
     if concat_raws:
         concat_file = fnr.get_filename(subj=subj, file="concat")
         transfile = fnr.get_trans_file(subj=subj, fif=concat_file)
@@ -16,8 +38,7 @@ for subj in subjects:
         if os.path.isfile(transfile):
             print("\n\n\nCoregistration skipped, as concat-transfile exists.\n\n\n")
         else:
-            print(f"\n\n\nTransfile should be called: {transfile}\n\n\n")
-            mne.gui.coregistration(subject=subj, subjects_dir=subjects_dir, inst=concat_file)
+            
     
     fifs = fnr.get_tsss_eve_fifs(subj)
     for fif in fifs:
@@ -46,3 +67,5 @@ for subj in subjects:
 #
 # maybe only use processing="tsssTransEvePreproc" for frequency spectrum at first
 #
+
+"""

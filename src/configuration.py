@@ -69,7 +69,8 @@ do_hippocampus_segmentation = False
 
 
 # Coregistration
-use_single_transfile = True   # only do this if files are .trans.tsss
+use_single_transfile = True     # the pipeline assumes, that .fifs have been maxfiltered with head translation (--trans option)
+                                # that way one trans-file should suffice
 
 # BEM_spacing = 
 BEM_three_layer = [0.3, 0.006, 0.3]  # 3 layer BEM
