@@ -217,6 +217,7 @@ class RawPreprocessor():
             return eventfile
     
     def filter_raw(self, raw, l_freq=1, h_freq=70, fir_design="firwin", n_jobs=1):
+        raw.load_data()
         raw = raw.filter(l_freq=l_freq, h_freq=h_freq, fir_design=fir_design)
         return raw
     
