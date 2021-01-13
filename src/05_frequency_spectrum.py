@@ -130,8 +130,10 @@ for subj in subjects:
         image = x_hemi_freq[band].save_image(freqfilename3d)
 
 
-"""
+
 # 2. Frequency distribution with DICS beamformer:  --> for evoked files, not resting state (to do)
+
+"""
 for subj in subjects:
     if concat_raws:
         concat_file = fnr.get_filename(subj=subj, file="concat")

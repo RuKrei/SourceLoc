@@ -10,12 +10,12 @@ generate a class (NxNConn) to compute NxN-Connectivity:
     inputs:
         fif
         metric (Coherence, PLI, GraphTheor.-Metrics)
-            frequency and time-frequency metrics!!!
+            frequency and time-frequency metrics
         labels (--> subclass)
 generate a class (OnexNConn) to compute 1xN-Connectivity:
     inputs:
         fif
         metric (Coherence, PLI, GraphTheor.-Metrics)
-            frequency and time-frequency metrics!!!
+            frequency and time-frequency metrics
         source-seed/label
 """

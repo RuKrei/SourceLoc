@@ -79,7 +79,7 @@ spacings = ["oct6", "oct5", "ico4", "ico5"]  # "oct5" = 1026, "ico4" = 2562, "oc
 
 
 # Volume source space
-volume_label = None    # standard freesurfer labels --> if set, then extra source spaces for the labels are constructed.
+volume_label = None    # standard freesurfer labels --> if set, then extra source spaces for the labels are constructed (to do).
 single_volume = True   # multiple values of volume label will be merged to a single source space, if true
 
 
