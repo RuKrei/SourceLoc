@@ -13,8 +13,9 @@ subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 for subj in subjects:
     subsubj = "sub-" + subj
-    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", root=derivatives_root, processing="tsssTransEpoPreproc")
-    print(f"\n\nThe following files with processing= \"tsssTransEpoPreproc\" were found: {bids_derivatives.match()}\n\n")
+    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
+                                root=derivatives_root, processing="tsssTransEvePreproc")
+    print(f"\n\nThe following files with processing= \"tsssTransEvePreproc\" were found: {bids_derivatives.match()}\n\n")
     #load data
     raw = read_raw_bids(bids_path=bids_derivatives)
     if use_single_transfile == True:
@@ -26,10 +27,7 @@ for subj in subjects:
             mne.gui.coregistration(subject=subsubj, subjects_dir=subjects_dir, inst=raw.filenames[0])
 
 
-
-
-
-    """
+"""
     
     if concat_raws:
         concat_file = fnr.get_filename(subj=subj, file="concat")

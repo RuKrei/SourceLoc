@@ -83,8 +83,8 @@ for subj in subjects:
     if not subj.startswith("sub-"):
         subj = "sub-" + subj
 
+
 # Head-Model
-    subjects_dir = fnr.get_filename(subj, file="subjects_dir")
     if not os.path.isfile(subjects_dir + "/" + subj + "/bem/" + subj + "-head.fif"):
         mne.bem.make_watershed_bem(subject=subj, subjects_dir=subjects_dir, overwrite=True)
 

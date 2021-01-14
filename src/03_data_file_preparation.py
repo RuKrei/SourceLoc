@@ -31,7 +31,8 @@ for subj in subjects:
     preproc_folder = os.path.join(derivatives_root, subsubj, "preprocessing")
 
     # the files of interest: processing flag = "tsssTransEve"
-    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", root=derivatives_root, processing="tsssTransEve")
+    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
+                                root=derivatives_root, processing="tsssTransEve")
     print(f"\n\nThe following files with processing= \"tsssTransEve\" were found: {bids_derivatives.match()}\n\n")
     raw = read_raw_bids(bids_path=bids_derivatives)
 
@@ -70,28 +71,12 @@ for subj in subjects:
     raw.save(raw_temp, overwrite=True)
     raw = mne.io.read_raw(raw_temp, preload=False)
     bids_derivatives.update(processing="tsssTransEvePreproc")                       
-    write_raw_bids(raw, bids_derivatives, overwrite=True)                           ########### to do: does this include event data/ annotations???
-
-"""
-# Epochs
-
-    if do_source_loc:
-        epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
-        print(f"Epochs metadata = {epochs.metadata}")
-        bids_derivatives.update(processing="tsssTransEpoPreproc")
-        write_raw_bids(raw, bids_derivatives, events_data=events, event_id=event_ids, overwrite=True)     
+    write_raw_bids(raw, bids_derivatives, overwrite=True)
 
 
 
-# check if everything worked as expected
-    raw = read_raw_bids(bids_derivatives)   
-    print(raw.annotations)
-"""
 
-
-
-"""
-To do:
+"""To do:
     if multiple files:
     when loading them there should be a run flag --> has to be added
     save a concat-file in a BIDS compatible manner

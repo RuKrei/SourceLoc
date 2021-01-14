@@ -6,13 +6,13 @@
 
 import os
 
-subjects = ["BF28011991"]     # "*" means every subject in data_root
+subjects = ["PP05071984"] #["BF28011991"]     # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 #where am I?
-beast =  False
-candice = True
+beast =  True
+candice = False
 
 # BIDS inputs
 if beast:
@@ -55,7 +55,7 @@ n_grad = 1          # number of Vectors to apply for gradiometers
 n_mag = 1           # number of Vectors to apply for magnetometers
 n_eeg = 1           # number of Vectors to apply for eeg
 ecg_channel=None
-do_ecg_correction_ssp = True
+do_ecg_correction_ssp = False
 do_ecg_correction_ica = False
 do_ecg_correction_regression = False
 
