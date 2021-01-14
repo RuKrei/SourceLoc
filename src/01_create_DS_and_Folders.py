@@ -100,7 +100,7 @@ for subj in subjects:
     except Exception as e:
         print(e)
 
-    nafolder = os.path.join(data_root, subj, subj)
+    anafolder = os.path.join(data_root, subj, subj)
     niis = glob.glob(anafolder + "/*.nii*")
 
     try:
