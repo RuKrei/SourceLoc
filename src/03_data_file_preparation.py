@@ -72,7 +72,7 @@ for subj in subjects:
     bids_derivatives.update(processing="tsssTransEvePreproc")                       
     write_raw_bids(raw, bids_derivatives, overwrite=True)                           ########### to do: does this include event data/ annotations???
 
-
+"""
 # Epochs
 
     if do_source_loc:
@@ -81,18 +81,18 @@ for subj in subjects:
         bids_derivatives.update(processing="tsssTransEpoPreproc")
         write_raw_bids(raw, bids_derivatives, events_data=events, event_id=event_ids, overwrite=True)     
 
+
+
 # check if everything worked as expected
     raw = read_raw_bids(bids_derivatives)   
     print(raw.annotations)
+"""
 
 
 
 """
 To do:
-
-if multiple files:
+    if multiple files:
     when loading them there should be a run flag --> has to be added
     save a concat-file in a BIDS compatible manner
-
-
 """

@@ -7,14 +7,15 @@ from os.path import isfile
 from nipype.interfaces.freesurfer import ReconAll
 import os
 from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data_root, do_hippocampus_segmentation,
-                            BEM_single_shell, BEM_three_layer, spacings, volume_label, single_volume, derivatives_root)
+                            BEM_single_shell, BEM_three_layer, spacings, volume_label, single_volume, derivatives_root,
+                            subjects_dir)
 import glob
 import mne
 from utils.utils import FileNameRetriever
 import shutil
 import subprocess
 
-subjects_dir = os.environ.get("SUBJECTS_DIR")
+
 fnr = FileNameRetriever(derivatives_root)
 
 def recursive_overwrite(src, dest, ignore=None):

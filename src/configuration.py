@@ -8,10 +8,11 @@ import os
 
 subjects = ["BF28011991"]     # "*" means every subject in data_root
 
+subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 #where am I?
-beast =  True
-candice = False
+beast =  False
+candice = True
 
 # BIDS inputs
 if beast:
@@ -101,7 +102,7 @@ use_source_model_for_sourceloc = "ico4"                 # Options = "oct6", "oct
 do_volume_source_loc = False
 use_fwd_model_for_sourceloc = "3-layer-BEM-sol"         # or:   "single-shell-BEM-sol"  
 source_loc_methods = ["dSPM", "eLORETA"]                # "MNE"
-vol_source_loc_methods = "eLOREAT"
+vol_source_loc_methods = "eLORETA"
 signal_to_noise_ratio = 3.
 minimum_norm_ori = None                                 # None --> norm of loose/free orientations; 
                                                         # "normal" --> only 90° to surface
