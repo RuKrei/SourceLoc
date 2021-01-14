@@ -4,6 +4,7 @@
 
 from mne import Report
 import mne
+from mne_bids import read_raw_bids, BIDSPath
 import os
 import glob
 import numpy as np
@@ -11,10 +12,12 @@ from datetime import datetime
 import pdb
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from configuration import (subjects, n_jobs, bids_root, freq_bands)
+from configuration import (subjects, subjects_dir, n_jobs, derivatives_root, extras_dir, freq_bands, session)
 from utils.utils import FileNameRetriever
 
-fnr = FileNameRetriever(bids_root)
+mne.viz.set_3d_backend("pyvista")
+
+fnr = FileNameRetriever(derivatives_root)
 
 def plot_time_course(series, event='GR_1', filename=None):
     fig.suptitle(str(event + ' Time course'), fontsize=12)
@@ -66,12 +69,11 @@ def plot_time_course(series, event='GR_1', filename=None):
 
 
 for subj in subjects:
-    subjects_dir = fnr.get_filename(subj=subj, file="subjects_dir")
-    meg_folder = fnr.get_filename(subj, "meg")
-    report_folder = fnr.get_filename(subj, "report")
-    spike_folder = fnr.get_filename(subj, "spikes")
-    epos = glob.glob(meg_folder + "/*epo.fif")
-    fifs = glob.glob(meg_folder + "/*task-resting*.fif")
+    subsubj = "sub-" + subj
+    meg_folder = os.path.join(derivatives_root, subsubj, "ses-resting", "meg")
+    report_folder = fnr.get_filename(subsubj, "report")
+    spike_folder = fnr.get_filename(subsubj, "spikes")
+    fifs = glob.glob(meg_folder + "/*EvePreproc*.fif")
     for fif in fifs:
         raw = mne.io.read_raw_fif(fif)
         aquisition_date = raw.info['meas_date']
@@ -91,35 +93,40 @@ for subj in subjects:
         title = (subj + ' _MEG_Befund-' + now)
         h5title = (subj + ' _MEG_Befund-' + now)
 
-    report = Report(subject=subj, subjects_dir=subjects_dir, 
+    report = Report(subject=subsubj, subjects_dir=subjects_dir, 
                         title=title, verbose=True, raw_psd=True)
     
     # Add title image
-    cover_file = report_folder + '/MEG_title.png'
+    cover_file = extras_dir + '/MEG_title.png'
     cover_title = (subj + ' MEG Befund')
     report.add_images_to_section(cover_file, section=cover_title, captions=cover_title) 
 
-    for epo in epos:
-        epochs = mne.read_epochs(epo)
-        events = epochs.event_id
-        if events.keys() != []:
-            for e in events.keys():
-                if e == "ignore_me" or e == "AAA" or e.startswith("."):
-                    pass
-                else:
-                    cap = e + ' --> Topomaps'
-                    viz_eve = epochs[e].average().crop(-0.2, 0.2)
-                    times = np.linspace(-0.02, 0.01, 6)
-                    fig = viz_eve.plot_joint(times=times, show=False)
-                    report.add_figs_to_section(fig, captions=cap, section=e)
-
-                    #cap = e + ' --> eLORETA with peaks'
-
+    # Epochs
+    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", root=derivatives_root, processing="tsssTransEvePreproc")    
+    raw = read_raw_bids(bids_derivatives)
+    events, event_ids = mne.events_from_annotations(raw)
+    epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
+    events = epochs.event_id
+    print("\n Events are: ", events)
+    
+    """
+    if events.keys() != []:
+        for e in events:
+            if e == "ignore_me" or e == "AAA" or e.startswith("."):
+                pass
+            else:
+                cap = str(e) + " --> Topomaps"
+                viz_eve = epochs[e].average().crop(-0.2, 0.2)
+                times = np.linspace(-0.02, 0.01, 6)
+                fig = viz_eve.plot_joint(times=times, show=False)
+                report.add_figs_to_section(fig, captions=cap, section=e)
+                #cap = e + ' --> eLORETA with peaks'
+    """
 
     
 
     # Frequenzverteilung
-    freq_folder = fnr.get_filename(subj, "freqMNE")
+    freq_folder = fnr.get_filename(subsubj, "freqMNE")
     for band in freq_bands.keys():
         freq_files = glob.glob(freq_folder + '/*_freq_topomap_3d_dors.png')
         xhemi_files = glob.glob(freq_folder + '/*_x_hemi*.png')
@@ -178,7 +185,7 @@ for subj in subjects:
                 
 
     # Add disclaimer image
-    disclaimer_file = report_folder + '/MEG_disclaimer.png'
+    disclaimer_file = extras_dir + '/MEG_disclaimer.png'
     report.add_images_to_section(disclaimer_file, section='disclaimer', captions='End notes')   
 
     ### Save all

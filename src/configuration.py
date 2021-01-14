@@ -25,6 +25,7 @@ if candice:
 
 session = "resting"
 derivatives_root = os.path.join(bids_root, "derivatives")
+extras_dir = os.path.join(bids_root, "..", "extras")
 
 if subjects == ["*"]:
     subjects = os.listdir(data_root)
