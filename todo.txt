@@ -17,3 +17,5 @@ update preprocessing + output of preprocessing
 -- sensitivity maps
 -- segmentation
 
+automatically send report.html to predefined email
+
