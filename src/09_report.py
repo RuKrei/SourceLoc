@@ -97,11 +97,13 @@ for subj in subjects:
 
     report = Report(subject=subsubj, subjects_dir=subjects_dir, 
                         title=title, verbose=True, raw_psd=True)
-    
+
+
     # Add title image
     cover_file = extras_dir + '/MEG_title.png'
     cover_title = (subj + ' MEG Befund')
     report.add_images_to_section(cover_file, section=cover_title, captions=cover_title) 
+
 
     # Epochs
     bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", root=derivatives_root, processing="tsssTransEvePreproc")    
@@ -111,21 +113,55 @@ for subj in subjects:
     events = epochs.event_id
     print("\n Events are: ", events)
     
-    """
     if events.keys() != []:
-        for e in events:
+        for e in events.keys():
+            spike_folder = fnr.get_filename(subsubj, "spikes")
             if e == "ignore_me" or e == "AAA" or e.startswith("."):
                 pass
             else:
+                # Visualize Topomaps
                 cap = str(e) + " --> Topomaps"
                 viz_eve = epochs[e].average().crop(-0.2, 0.2)
                 times = np.linspace(-0.02, 0.01, 6)
-                fig = viz_eve.plot_joint(times=times, show=False)
-                report.add_figs_to_section(fig, captions=cap, section=e)
-                #cap = e + ' --> eLORETA with peaks'
-    """
+                figs = viz_eve.plot_joint(times=times, show=False)
+                
+                # Add to report
+                for fig in figs:
+                    report.add_figs_to_section(fig, captions=cap, section=e)
 
-    
+                # Find generic and custom pics
+                generic_pics_folder = os.path.join(spike_folder, e, "generic_pics")
+                dSPM_file = glob.glob(generic_pics_folder + "/*_dSPM.png")
+                #eLO_file = glob.glob(generic_pics_folder + "/*_eLORETA.png")
+                eLO_peak_file = glob.glob(generic_pics_folder + "/*_eLORETA_with_peaks.png")
+
+                custom_pics_folder = os.path.join(spike_folder, e, "custom_pics")
+                custom_pics = glob.glob(custom_pics_folder + "/*.png")
+                custom_ts_folder = os.path.join(spike_folder, e, "custom_time_series")
+                custom_ts = glob.glob(custom_ts_folder + "/*.png")
+
+                # Add to report
+                # generics
+                caption = e + ' --> dSPM'
+                report.add_images_to_section(dSPM_file, captions=caption, section=e)
+                caption = str(e) + ' --> eLORETA + peaks'
+                report.add_images_to_section(eLO_peak_file, captions=caption, section=e)
+                # custom pics
+                if custom_pics is not []:
+                    for cst in custom_pics:
+                        cst_title = cst.split('/')[-1]
+                        cst_title = cst_title.split('.')[0]
+                        caption = e + ' --> ' + cst_title
+                        report.add_images_to_section(cst, section=e, captions=caption)
+                if custom_ts is not []:    
+                    for cts in custom_ts:
+                        caption = e + ' --> Time course'
+                        fig = plt.figure(figsize=(30, 30), dpi=150)
+                        fig = plot_time_course(sorted(custom_ts), event=e)
+                        plt.tight_layout()
+                        report.add_figs_to_section(fig, section=e, captions=caption)
+                        break
+
 
     # Frequenzverteilung
     freq_folder = fnr.get_filename(subsubj, "freqMNE")
@@ -200,8 +236,16 @@ for subj in subjects:
                         report.add_figs_to_section(fig, section=sec, captions=cap)
 
 
-
-                        ### read images, arrang in figure, give title, add to report
+    # Preprocessing data
+    preproc_folder = fnr.get_filename(subsubj, "preprocessing")
+    EOG_files = glob.glob(preproc_folder + "/*EOG*")
+    ECG_files = glob.glob(preproc_folder + "/*ECG*")
+    coreg_files = glob.glob(preproc_folder + "/*coreg*")
+    
+    try:
+        report.add_bem_to_section(subsubj, decim=4, n_jobs=n_jobs, subjects_dir=subjects_dir, section='BEM')
+    except ValueError:
+        print ("Could not add BEM to report, it seems a spherical model was used...")
                 
 
     # Add disclaimer image

@@ -124,6 +124,10 @@ class FileNameRetriever():
         if file == "report":
             return os.path.join(fbase, "report")
 
+        # filepath - Preprocessing Folder
+        if file == "preprocessing":
+            return os.path.join(fbase, "preprocessing")
+
 
     def get_tsss_fifs(self, subj=None):
         tsss_dir = os.path.join(self.bids_root, subj, "meg")
