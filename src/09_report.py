@@ -10,12 +10,14 @@ import glob
 import numpy as np
 from datetime import datetime
 import pdb
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from configuration import (subjects, subjects_dir, n_jobs, derivatives_root, extras_dir, freq_bands, session)
 from utils.utils import FileNameRetriever
 
 mne.viz.set_3d_backend("pyvista")
+matplotlib.rcParams["figure.facecolor"] = "black"
 
 fnr = FileNameRetriever(derivatives_root)
 
@@ -134,21 +136,13 @@ for subj in subjects:
             if str(band) in freq_file.split("/")[-1]:
                 for xhemi_file in xhemi_files:
                     if str(band) in xhemi_file.split("/")[-1]:
-                        fig = plt.Figure(facecolor=(0, 0, 0))
+                        fig = plt.Figure(facecolor="black")
                         #fig.suptitle((' Frequenzverteilung - ' + str(band)), fontsize=12)
                         fig.set_figwidth(15)
-                        fig.set_figheight(9)
+                        fig.set_figheight(15)
                         
-                        # dorsal
-                        ax1 = fig.add_subplot(2, 2, 3)
-                        ax1.set_title('Dorsal view', color=(1,1,1))
-                        ax1.set_xticks([])
-                        ax1.set_yticks([])
-                        mpimg_img = mpimg.imread(freq_file) 
-                        ax1.imshow(mpimg_img)
-
                         # lateral
-                        ax2 = fig.add_subplot(2, 2, 1)
+                        ax2 = fig.add_subplot(3, 2, 1)
                         ax2.set_title('Left hemisphere', color=(1,1,1))
                         ax2.set_xticks([])
                         ax2.set_yticks([])
@@ -156,7 +150,7 @@ for subj in subjects:
                         mpimg_img = mpimg.imread(lat_file) 
                         ax2.imshow(mpimg_img)
 
-                        ax3 = fig.add_subplot(2, 2, 2)
+                        ax3 = fig.add_subplot(3, 2, 2)
                         ax3.set_title('Right hemisphere', color=(1,1,1))
                         ax3.set_xticks([])
                         ax3.set_yticks([])
@@ -164,8 +158,34 @@ for subj in subjects:
                         mpimg_img = mpimg.imread(lat_file) 
                         ax3.imshow(mpimg_img)
 
+                        # medial
+                        ax5 = fig.add_subplot(3, 2, 3)
+                        ax5.set_title('Left hemisphere', color=(1,1,1))
+                        ax5.set_xticks([])
+                        ax5.set_yticks([])
+                        med_file = (freq_file.split("dors.png")[0] + "med_lh.png")
+                        print(med_file)
+                        mpimg_img = mpimg.imread(med_file)
+                        ax5.imshow(mpimg_img)
+
+                        ax6 = fig.add_subplot(3, 2, 4)
+                        ax6.set_title('Right hemisphere', color=(1,1,1))
+                        ax6.set_xticks([])
+                        ax6.set_yticks([])
+                        med_file = (freq_file.split("dors.png")[0] + "med_rh.png")
+                        mpimg_img = mpimg.imread(med_file) 
+                        ax6.imshow(mpimg_img)
+
+                         # dorsal
+                        ax1 = fig.add_subplot(3, 2, 5)
+                        ax1.set_title('Dorsal view', color=(1,1,1))
+                        ax1.set_xticks([])
+                        ax1.set_yticks([])
+                        mpimg_img = mpimg.imread(freq_file) 
+                        ax1.imshow(mpimg_img)
+
                         # xhemi
-                        ax4 = fig.add_subplot(2, 2, 4)
+                        ax4 = fig.add_subplot(3, 2, 6)
                         ax4.set_title('Cross hemisphere comparison', color=(1,1,1))
                         ax4.set_xticks([])
                         ax4.set_yticks([])

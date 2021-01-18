@@ -16,8 +16,8 @@ candice = False
 
 # BIDS inputs
 if beast:
-    bids_root = "/home/idrael/DATA/MEG/SourceLocTest/BIDSTestData"   #beast
-    data_root = "/home/idrael/DATA/MEG/SourceLocTest/input_folder"        #beast
+    bids_root = "/home/idrael/DATA/MEG/SourceLocTest/BIDSTestData"      #beast
+    data_root = "/home/idrael/DATA/MEG/SourceLocTest/input_folder"      #beast
 
 if candice:
     bids_root = "/Users/idrael/Playground/SourceLocTest/BIDSTestData"           #candice
