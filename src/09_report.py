@@ -176,7 +176,6 @@ for subj in subjects:
                 for xhemi_file in xhemi_files:
                     if str(band) in xhemi_file.split("/")[-1]:
                         fig = plt.Figure(facecolor="black")
-                        #fig.suptitle((' Frequenzverteilung - ' + str(band)), fontsize=12)
                         fig.set_figwidth(15)
                         fig.set_figheight(15)
                         
@@ -239,11 +238,16 @@ for subj in subjects:
                         report.add_figs_to_section(fig, section=sec, captions=cap)
 
 
+    # Addendum
+    sec="Addendum"
     # Preprocessing data
     preproc_folder = fnr.get_filename(subsubj, "preprocessing")
-    EOG_files = glob.glob(preproc_folder + "/*EOG*")
-    ECG_files = glob.glob(preproc_folder + "/*ECG*")
-    coreg_files = glob.glob(preproc_folder + "/*coreg*")
+    addendum_files = glob.glob(preproc_folder + "/*.png")
+    
+    for f in sorted(addendum_files):
+        if f != []:
+            cap = f.split("/")[-1]
+            report.add_images_to_section(f, captions=cap, section=sec)
     
     try:
         report.add_bem_to_section(subsubj, decim=4, n_jobs=n_jobs, subjects_dir=subjects_dir, section='BEM')
