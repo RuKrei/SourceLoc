@@ -103,7 +103,7 @@ for subj in subjects:
                     img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '.png')
                     img_f_name = os.path.join(gp_folder, img_f_name)
                     brain.save_image(img_f_name)
-                    stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m)
+                    stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m + "-stc.h5")
                     stc_f_name = os.path.join(e_folder, stc_f_name)
                     e.save(stc_f_name)
                 

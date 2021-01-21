@@ -114,11 +114,15 @@ for subj in subjects:
     print("\n Events are: ", events)
     
     if events.keys() != []:
-        for e in events.keys():
-            spike_folder = fnr.get_filename(subsubj, "spikes")
-            if e == "ignore_me" or e == "AAA" or e.startswith("."):
-                pass
-            else:
+        spike_folder = fnr.get_filename(subsubj, "spikes")
+        desired_events = glob.glob(spike_folder + "/*")
+        #print (desired_events)
+        for e in desired_events:
+            e = e.split("/")[-1]
+            if e.lower() == "ignore_me" or e.upper() == "AAA" or e.startswith("."):
+                print (f"Omitting {e} from Analysis")
+            elif e in events:
+                print(f"Adding data from {e} to report...")
                 # Visualize Topomaps
                 cap = str(e) + " --> Topomaps"
                 viz_eve = epochs[e].average().crop(-0.2, 0.2)
@@ -161,9 +165,8 @@ for subj in subjects:
                         plt.tight_layout()
                         report.add_figs_to_section(fig, section=e, captions=caption)
                         break
-
-
-    # Frequenzverteilung
+                                                                                                                                 
+    
     freq_folder = fnr.get_filename(subsubj, "freqMNE")
     for band in freq_bands.keys():
         freq_files = glob.glob(freq_folder + '/*_freq_topomap_3d_dors.png')

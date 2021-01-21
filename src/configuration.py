@@ -6,7 +6,7 @@
 
 import os
 
-subjects = ["MA17011989"] #["PP05071984"] #["BF28011991"]     # "*" means every subject in data_root
+subjects = ["PP05071984"] #["BF28011991"] # ["MA17011989"] #     # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
