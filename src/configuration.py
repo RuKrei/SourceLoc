@@ -6,13 +6,14 @@
 
 import os
 
-subjects = ["BF28011991"] # ["MA17011989"] # ["PP05071984"] #    # "*" means every subject in data_root
+subjects = ["MA17011989"]   # ["PP05071984"] # ["BF28011991"] #   # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 #where am I?
 beast =  False
-candice = True
+candice = False
+h_beast = True
 
 # BIDS inputs
 if beast:
@@ -22,6 +23,11 @@ if beast:
 if candice:
     bids_root = "/Users/idrael/Playground/SourceLocTest/BIDSTestData"           #candice
     data_root = "/Users/idrael/Playground/SourceLocTest/input_folder"           #candice
+
+if h_beast:
+    bids_root = "/media/idrael/Data/SourceLocTest/BIDSTestData"         #h_beast
+    data_root = "/media/idrael/Data/SourceLocTest/input_folder"         #h_beast
+    subjects_dir = "/media/idrael/Data/Playground/anat"                 #h_beast
 
 session = "resting"
 derivatives_root = os.path.join(bids_root, "derivatives")
@@ -34,7 +40,7 @@ if subjects == ["*"]:
 if beast:
     openmp = 35
     n_jobs = 35
-if candice:
+if candice or h_beast:
     openmp = 4
     n_jobs = 4
 
