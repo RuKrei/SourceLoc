@@ -24,10 +24,8 @@ for subj in subjects:
     subjects_dir = fnr.get_filename(subsubj, "subjects_dir")
     bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, suffix="meg",
                                 task="resting", root=derivatives_root, processing="tsssTransEvePreproc")
-    print(f"\nUsing the following file for analysis of frequency distributions: {bids_derivatives.match()}")
     
     all_raws = bids_derivatives.match()
-    
     for raw in all_raws:
         raw = read_raw_bids(raw)
      
@@ -35,7 +33,6 @@ for subj in subjects:
         trans = fnr.get_single_trans_file(subsubj)
         bem_sol = fnr.get_filename(subsubj, file="3-layer-BEM-sol")
         src = fnr.get_filename(subsubj, file=use_source_model_for_freq)
-        print(f"src = {src}")
         fwd_name = fnr.get_filename(subj=subsubj, file="fwd")
         freq_MNE_folder = fnr.get_filename(subj=subsubj, file="freqMNE")
         filebase = str(subsubj) + "_Freqs"
@@ -43,7 +40,7 @@ for subj in subjects:
         all_stcs_filename = os.path.join(freq_MNE_folder, all_stcs_filename)
         sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
         sensor_psd_filename = os.path.join(freq_MNE_folder, sensor_psd_filename)
-        if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):
+        if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):  # so this should run only on the first file..
             raw.load_data()
             if os.path.isfile(fwd_name):
                 fwd = mne.read_forward_solution(fwd_name)
@@ -115,11 +112,10 @@ for subj in subjects:
 
 
     # 2. Cross hemisphere comparison
-
             # make sure fsaverage_sym exists in local subjects dir:
             target = os.path.join(subjects_dir, "fsaverage_sym")
             if not os.path.isdir(target):
-                #os.makedirs(target)
+                # try to find it in $SUBJECTS_DIR and copy
                 os_subj_dir = os.environ.get("SUBJECTS_DIR")
                 fs_avg_sym_dir = os.path.join(os_subj_dir, "fsaverage_sym")
                 recursive_overwrite(fs_avg_sym_dir, target)
@@ -146,7 +142,7 @@ for subj in subjects:
 
 
 
-# 2. Frequency distribution with DICS beamformer:  --> for evoked files, not resting state (to do)
+# 2. Frequency distribution with DICS beamformer:  --> would be for evoked files, not resting state (to do)
 
 """
 for subj in subjects:
@@ -212,12 +208,6 @@ for subj in subjects:
 
 """
 To do:
-- make DICS Solution work :-)
-- calculate diffenece between MNE and DICS solution --> is there any?
-    normalize stc_psd-data for both solutions, subtract one from the other and plot
-    for visual prototyping
-        are there vast differences?
-
-
+- make DICS Solution work
 
 """

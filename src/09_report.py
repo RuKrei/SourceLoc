@@ -75,16 +75,15 @@ for subj in subjects:
     meg_folder = os.path.join(derivatives_root, subsubj, "ses-resting", "meg")
     report_folder = fnr.get_filename(subsubj, "report")
     spike_folder = fnr.get_filename(subsubj, "spikes")
-    fifs = glob.glob(meg_folder + "/*EvePreproc*.fif")
-    for fif in fifs:
-        raw = mne.io.read_raw_fif(fif)
-        aquisition_date = raw.info['meas_date']
-        year = aquisition_date.year
-        month = aquisition_date.month
-        day = aquisition_date.day
-        aquisition_date = (str(day) + '-' + str(month) + '-' + str(year))
-        del(raw)
-        break
+    fif = glob.glob(meg_folder + "/*finalEpochs_meg.fif")
+    print(f" fif --> {fif}")
+    raw = mne.io.read_raw(fif[-1])
+    aquisition_date = raw.info['meas_date']
+    year = aquisition_date.year
+    month = aquisition_date.month
+    day = aquisition_date.day
+    aquisition_date = (str(day) + '-' + str(month) + '-' + str(year))
+
     now = str(datetime.now())
 
     try:
@@ -106,8 +105,9 @@ for subj in subjects:
 
 
     # Epochs
-    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", root=derivatives_root, processing="tsssTransEvePreproc")    
-    raw = read_raw_bids(bids_derivatives)
+    #bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
+    #                    root=derivatives_root, processing="tsssTransEvePreproc")    
+    #raw = read_raw_bids(bids_derivatives)
     events, event_ids = mne.events_from_annotations(raw)
     epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
     events = epochs.event_id

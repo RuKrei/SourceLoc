@@ -36,8 +36,9 @@ for subj in subjects:
     print(f"\n\nThe following files with processing= \"tsssTransEve\" were found: {bids_derivatives.match()}\n\n")
     all_raws = bids_derivatives.match()
     
-    for raw in all_raws:
+    for run, raw in enumerate(all_raws):
         raw = read_raw_bids(raw)
+        run += 1
 
     # preprocessing
         # filter
@@ -53,7 +54,8 @@ for subj in subjects:
             ecg_artifact = mne.preprocessing.create_ecg_epochs(raw, ch_name=ecg_channel)
             ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg)
             raw.add_proj(ecg_projs)
-            fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info)
+            raw.apply_proj(ecg_projs, verbose=None)
+            fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
             savename = os.path.join(preproc_folder, "ECG_projs_Topomap.png")
             fig.savefig(savename)
 
@@ -61,9 +63,10 @@ for subj in subjects:
         if do_eog_correction_ssp:
             eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
             #eog_evoked.apply_baseline((None, None))
-            eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, no_proj=True)
-            raw.add_proj(eog_projs)
-            figs = eog_evoked.plot_joint()
+            eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
+                                                        n_jobs=n_jobs)
+            raw.add_proj(eog_projs).apply_proj()
+            figs = eog_evoked.plot_joint(show=False)
             for idx, fig in enumerate(figs):
                 savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")
                 fig.savefig(savename)
@@ -73,12 +76,5 @@ for subj in subjects:
         raw_temp = os.path.join(preproc_folder, "temp.fif")
         raw.save(raw_temp, overwrite=True)
         raw = mne.io.read_raw(raw_temp, preload=False)
-        bids_derivatives.update(processing="tsssTransEvePreproc")                       
+        bids_derivatives.update(processing="tsssTransEvePreproc", run=run)                       
         write_raw_bids(raw, bids_derivatives, overwrite=True)
-
-
-
-
-"""To do:
-    save a concat-file in a BIDS compatible manner
-"""

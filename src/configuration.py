@@ -61,7 +61,7 @@ n_grad = 1          # number of Vectors to apply for gradiometers
 n_mag = 1           # number of Vectors to apply for magnetometers
 n_eeg = 1           # number of Vectors to apply for eeg
 ecg_channel=None
-do_ecg_correction_ssp = False
+do_ecg_correction_ssp = True
 do_ecg_correction_ica = False
 do_ecg_correction_regression = False
 

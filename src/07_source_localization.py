@@ -10,7 +10,7 @@ from configuration import (subjects, n_jobs, derivatives_root, use_source_model_
                             peaks_tmin, peaks_tmax, peaks_mode, peaks_nr_of_points, dip_times, session,
                             derivatives_root, subjects_dir)
 import mne
-from mne_bids import BIDSPath, read_raw_bids
+from mne_bids import BIDSPath, read_raw_bids, write_raw_bids
 from utils.utils import FileNameRetriever, RawPreprocessor, get_peak_points
 import glob
 from nilearn.plotting import plot_anat
@@ -28,16 +28,25 @@ for subj in subjects:
     bem_sol = fnr.get_filename(subj=subsubj, file=use_fwd_model_for_sourceloc)
     trans_file = fnr.get_single_trans_file(subsubj)
 
-    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
+    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting",
                                 root=derivatives_root, processing="tsssTransEvePreproc", suffix="meg")
-    print(f"\nUsing the following file for source localization: {bids_derivatives.match()}")
-    
-    all_raws = bids_derivatives.match()
+ 
+    # load manually, as BIDS query returns all kinds of things...
+    target_dir = os.path.join(derivatives_root, subsubj, "ses-resting", "meg", subsubj)
+    all_raws = glob.glob(target_dir + "*tsssTransEvePreproc_meg.fif")
 
-    if (len(all_raws) > 1) and concat_raws:    #####################################
-        raw = mne.concatenate_raws(all_raws)   ##### this doesn't behave as expected
+    if (len(all_raws) > 1) and concat_raws:
+        raws = {}
+        for num, raw in enumerate(all_raws):
+            raws[num] = mne.io.read_raw(raw)
+        raw = mne.concatenate_raws(list(raws.values()))
     else:     
         raw = read_raw_bids(bids_derivatives)
+    
+    bids_derivatives.update(processing="finalEpochs", session="99")
+    fname = os.path.join(derivatives_root, subsubj, "ses-resting", "meg", bids_derivatives.basename)
+    fname = fname + ".fif"
+    raw.save(fname, overwrite=True)
 
     events, event_ids = mne.events_from_annotations(raw)
     epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
@@ -65,14 +74,13 @@ for subj in subjects:
             folders = [e_folder, cp_folder, cts_folder, gp_folder]
             if not os.path.isdir(e_folder):
                 for f in folders:
-                    print(f)
                     os.mkdir(f)
             src_file = fnr.get_filename(subsubj, use_source_model_for_sourceloc)
             if os.path.isfile(src_file):
                 src = mne.read_source_spaces(src_file)
             else:
                 print("Source model not found, aborting...")
-            print(bem_sol)
+
             fwd = mne.make_forward_solution(e.info, src=src, bem=bem_sol,
                                         trans=trans_file, 
                                         meg=pick_meg, eeg=pick_eeg, mindist=0.2, 
@@ -168,12 +176,5 @@ To do:
 
 - volume source localization
 - Plot difference between prediction and result: https://mne.tools/stable/auto_tutorials/source-modeling/plot_dipole_fit.html?highlight=ecd
-
-- check if eventname already exists, if yes:
-- - - append new evensts to existing eventfile    
-
-OR
-
-- concatenate all files, if multiple and then process accordingly
 
 """
