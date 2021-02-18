@@ -67,6 +67,7 @@ for subj in subjects:
 # - tsss-trans.fif + event-file         --> tsssTransEve
 
     for run, rawfile in enumerate(raws):
+        run +=1
         if "tsss" in rawfile:
             # --> search for matching eventfile and combine
             eve_name = rawfile.split(".fif")[0] + "_Events.csv"
@@ -77,7 +78,7 @@ for subj in subjects:
                 raw = mne.io.read_raw(rawfile, preload=True)
                 event_file, event_dict = prepper.transform_eventfile(eve_name)
                 raw.add_events(event_file)
-                bids_path.update(root=derivatives_root, processing="tsssTransEve")
+                bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
                 raw.save(rawfile, overwrite=True)
                 raw = mne.io.read_raw(rawfile, preload=False)
                 write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)

@@ -3,16 +3,16 @@
 
 import os
 from os.path import isfile
-from configuration import subjects, derivatives_root, concat_raws, use_single_transfile, session
+from configuration import subjects, subjects_dir, derivatives_root, concat_raws, use_single_transfile, session
 import mne
 from utils.utils import FileNameRetriever
 from mne_bids import BIDSPath, read_raw_bids
 
 fnr = FileNameRetriever(derivatives_root)
-subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 for subj in subjects:
     subsubj = "sub-" + subj
+    subjects_dir = fnr.get_filename(subsubj, "subjects_dir")
     bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
                                 root=derivatives_root, processing="tsssTransEvePreproc")
     print(f"\n\nThe following files with processing= \"tsssTransEvePreproc\" were found: {bids_derivatives.match()}\n\n")

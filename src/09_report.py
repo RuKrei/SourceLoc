@@ -17,7 +17,7 @@ from configuration import (subjects, subjects_dir, n_jobs, derivatives_root, ext
 from utils.utils import FileNameRetriever
 
 mne.viz.set_3d_backend("pyvista")
-matplotlib.rcParams["figure.facecolor"] = "black"
+matplotlib.rcParams["figure.facecolor"] = "white"
 
 fnr = FileNameRetriever(derivatives_root)
 
@@ -168,6 +168,7 @@ for subj in subjects:
                                                                                                                                  
     
     freq_folder = fnr.get_filename(subsubj, "freqMNE")
+    matplotlib.rcParams["figure.facecolor"] = "black"
     for band in freq_bands.keys():
         freq_files = glob.glob(freq_folder + '/*_freq_topomap_3d_dors.png')
         xhemi_files = glob.glob(freq_folder + '/*_x_hemi*.png')
@@ -236,6 +237,7 @@ for subj in subjects:
                         cap = 'Freq.-Distribution --> ' + str(band)
                         sec = "Freqs"
                         report.add_figs_to_section(fig, section=sec, captions=cap)
+        matplotlib.rcParams["figure.facecolor"] = "white"
 
 
     # Addendum

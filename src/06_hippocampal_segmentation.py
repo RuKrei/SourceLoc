@@ -17,8 +17,10 @@ def run_command(command):
 
 if do_hippocampus_segmentation:
     for subj in subjects:  
+        subsubj = "sub-" + subj
+        subjects_dir = fnr.get_filename(subsubj, "subjects_dir")
         print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
-        command = "segmentHA_T1.sh sub-" + subj
+        command = "segmentHA_T1.sh sub-" + subj + " " + subjects_dir
         run_command(command)
 
 
@@ -43,5 +45,7 @@ visualize single subjects segmentation and statistics:
     right to left difference?
     hippocampi too small relative to brain volume?
 visualize single subject and statistics vs. grand average of healthy subjects in same age bin
+
+--> doesn't work yet.
 
 """

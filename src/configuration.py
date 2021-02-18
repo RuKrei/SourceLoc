@@ -6,7 +6,7 @@
 
 import os
 
-subjects = ["MA17011989"]   # ["PP05071984"] # ["BF28011991"] #   # "*" means every subject in data_root
+subjects = ["johndoe"] # ["MA17011989"]   # ["PP05071984"] # ["BF28011991"] #   # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
@@ -73,7 +73,7 @@ do_eog_correction_regression = False
 
 # freesurfer_and_BEM
 do_anatomy = True
-do_hippocampus_segmentation = False
+do_hippocampus_segmentation = True
 
 
 # Coregistration

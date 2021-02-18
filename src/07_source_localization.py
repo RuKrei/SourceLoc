@@ -28,24 +28,29 @@ for subj in subjects:
     bem_sol = fnr.get_filename(subj=subsubj, file=use_fwd_model_for_sourceloc)
     trans_file = fnr.get_single_trans_file(subsubj)
 
-    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", root=derivatives_root, processing="tsssTransEvePreproc")
+    bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
+                                root=derivatives_root, processing="tsssTransEvePreproc", suffix="meg")
     print(f"\nUsing the following file for source localization: {bids_derivatives.match()}")
-    raw = read_raw_bids(bids_derivatives)
+    
+    all_raws = bids_derivatives.match()
+
+    if (len(all_raws) > 1) and concat_raws:    #####################################
+        raw = mne.concatenate_raws(all_raws)   ##### this doesn't behave as expected
+    else:     
+        raw = read_raw_bids(bids_derivatives)
+
     events, event_ids = mne.events_from_annotations(raw)
     epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
-
     noise_cov = mne.compute_covariance(epochs, tmax=-1, 
                                     #projs=, 
                                     method='auto',
                                     n_jobs=n_jobs)
-
     data_cov = mne.compute_covariance(epochs,
                                     tmin=-0.5, 
                                     tmax=0.3, 
                                     #projs=, 
                                     method='auto',
                                     n_jobs=n_jobs)
-    
     for event in event_ids.keys():
         eventname = str(event)
         if eventname == "ignore_me" or eventname == "AAA":
@@ -62,7 +67,6 @@ for subj in subjects:
                 for f in folders:
                     print(f)
                     os.mkdir(f)
-            
             src_file = fnr.get_filename(subsubj, use_source_model_for_sourceloc)
             if os.path.isfile(src_file):
                 src = mne.read_source_spaces(src_file)
@@ -74,18 +78,12 @@ for subj in subjects:
                                         meg=pick_meg, eeg=pick_eeg, mindist=0.2, 
                                         ignore_ref=False, 
                                         n_jobs=n_jobs, verbose=True)
-                         
             inv = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd, noise_cov=noise_cov, 
                                         loose=inv_loose_option, depth=0.8)
-    
-
             # Distributed source models
-
             for m in source_loc_methods:
                 stc_name = "stc_" + m + "_" + eventname
                 stc_name = 'stc_' + m
-
-
                 if m == 'dSPM':
                     stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
                                 method='dSPM', pick_ori='vector')
@@ -95,19 +93,15 @@ for subj in subjects:
                                 colorbar=True,
                                 initial_time=0, time_unit='ms', 
                                 size=(1000, 800), smoothing_steps=10)
-                    
                     brain = stc_name.plot(**surfer_kwargs)
                     label = str(subj + " - " + eventname + " - Vector solution")
                     brain.add_text(0.1, 0.9, label, 'title', font_size=10)
-                    
                     img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '.png')
                     img_f_name = os.path.join(gp_folder, img_f_name)
                     brain.save_image(img_f_name)
                     stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m + "-stc.h5")
                     stc_f_name = os.path.join(e_folder, stc_f_name)
                     e.save(stc_f_name)
-                
-
                 else:
                     stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
                                 method=m, pick_ori=minimum_norm_ori)
@@ -117,18 +111,15 @@ for subj in subjects:
                                 colorbar=True,
                                 initial_time=0, time_unit='ms', 
                                 size=(1000, 800), smoothing_steps=10)
-                    
                     brain = stc_name.plot(**surfer_kwargs)
                     label = str(subj + " - " + eventname + " - " +  m)
                     brain.add_text(0.1, 0.9, label, 'title', font_size=10)
-                    
                     img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '.png')
                     img_f_name = os.path.join(gp_folder, img_f_name)
                     brain.save_image(img_f_name)
                     stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m)
                     stc_f_name = os.path.join(e_folder, stc_f_name)
                     e.save(stc_f_name)
-                    
                     if m == "eLORETA":
                         rh_peaks = get_peak_points(stc_name, hemi='rh', tmin=peaks_tmin, 
                                                     tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
@@ -146,7 +137,6 @@ for subj in subjects:
                         img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '_with_peaks.png')
                         img_f_name = os.path.join(gp_folder, img_f_name)
                         brain.save_image(img_f_name)
-
             # Dipoles
             for start, stop in dip_times.values():
                 dip_epoch = e.copy().crop(start, stop).pick('meg')
@@ -178,4 +168,12 @@ To do:
 
 - volume source localization
 - Plot difference between prediction and result: https://mne.tools/stable/auto_tutorials/source-modeling/plot_dipole_fit.html?highlight=ecd
+
+- check if eventname already exists, if yes:
+- - - append new evensts to existing eventfile    
+
+OR
+
+- concatenate all files, if multiple and then process accordingly
+
 """
