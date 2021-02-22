@@ -4,24 +4,35 @@
 from nipype.interfaces.freesurfer import ReconAll, FSCommand
 import os
 from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data_root, 
-                        do_hippocampus_segmentation)
+                        do_hippocampus_segmentation, derivatives_root)
 import glob
 from utils.utils import FileNameRetriever
 import subprocess
 
-                            
-fnr = FileNameRetriever(bids_root)
 
-def run_command(command):
+def run_shell_command(command):
     subprocess.run(command, shell=True, capture_output=True, check=True)
 
-if do_hippocampus_segmentation:
+fnr = FileNameRetriever(derivatives_root)
+
+if do_hippocampus_segmentation:     ### Has to be tested yet!!!
     for subj in subjects:  
         subsubj = "sub-" + subj
-        subjects_dir = fnr.get_filename(subsubj, "subjects_dir")
-        print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
-        command = "segmentHA_T1.sh sub-" + subj + " " + subjects_dir
-        run_command(command)
+        this_subjects_dir = fnr.get_filename(subsubj, "subjects_dir")
+        freesurfered = os.path.join(this_subjects_dir, subsubj)
+        hippofile = os.path.join(freesurfered, "mri", "lh.hippoSfVolumes-T1.v21.txt")
+        print(f"###########\nHippofile: {hippofile}")
+        if not os.path.isfile(hippofile):
+            print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
+            hipposeg = "segmentHA_T1.sh " + subsubj + " " + this_subjects_dir
+            run_shell_command(hipposeg)
+        else:
+            print(f"Omitting hippocampal segmentation for subject {subj}, as it already exists")
+
+
+
+
+
 
 
 

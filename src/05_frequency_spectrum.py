@@ -140,6 +140,7 @@ for subj in subjects:
             freqfilename3d = os.path.join(freq_MNE_folder, freqfilename3d)
             image = x_hemi_freq[band].save_image(freqfilename3d)
 
+        break # only use the first file
 
 
 # 2. Frequency distribution with DICS beamformer:  --> would be for evoked files, not resting state (to do)
@@ -209,5 +210,6 @@ for subj in subjects:
 """
 To do:
 - make DICS Solution work
+- consider: picks = "meg"
 
 """

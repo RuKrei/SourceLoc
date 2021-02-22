@@ -109,7 +109,8 @@ for subj in subjects:
     #                    root=derivatives_root, processing="tsssTransEvePreproc")    
     #raw = read_raw_bids(bids_derivatives)
     events, event_ids = mne.events_from_annotations(raw)
-    epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
+    epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), 
+                        on_missing = "ignore", event_repeated="merge")
     events = epochs.event_id
     print("\n Events are: ", events)
     

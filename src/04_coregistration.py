@@ -7,6 +7,7 @@ from configuration import subjects, subjects_dir, derivatives_root, concat_raws,
 import mne
 from utils.utils import FileNameRetriever
 from mne_bids import BIDSPath, read_raw_bids
+import glob
 
 fnr = FileNameRetriever(derivatives_root)
 
@@ -16,15 +17,24 @@ for subj in subjects:
     bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
                                 root=derivatives_root, processing="tsssTransEvePreproc")
     print(f"\n\nThe following files with processing= \"tsssTransEvePreproc\" were found: {bids_derivatives.match()}\n\n")
+    
     #load data
-    raw = read_raw_bids(bids_path=bids_derivatives)
+    # This should actually be:
+    #raw = read_raw_bids(bids_path=bids_derivatives)
+    
+    # loading manually, as BIDS query returns all kinds of things...
+    target_dir = os.path.join(derivatives_root, subsubj, "ses-resting", "meg", subsubj)
+    rawfile = glob.glob(target_dir + "*tsssTransEvePreproc_meg.fif")[0]
+    #raw = mne.io.read_raw(rawfile)
+
+    
     if use_single_transfile == True:
         transfile = fnr.get_single_trans_file(subsubj)
         if isfile(transfile):
             print(f"Skipping coregistration, because a transfile ({transfile}) already exists")
         else:
             print(f"\n\n\n--> Transfile should be called: {transfile}\n\n\n")
-            mne.gui.coregistration(subject=subsubj, subjects_dir=subjects_dir, inst=raw.filenames[0])
+            mne.gui.coregistration(subject=subsubj, subjects_dir=subjects_dir, inst=rawfile) # BIDS: inst=raw.filenames[0])
 
 
 """

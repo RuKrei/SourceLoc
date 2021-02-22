@@ -68,8 +68,9 @@ for subj in subjects:
 
 
 # Head-Model
-    if not os.path.isfile(subjects_dir + "/" + subj + "/bem/" + subj + "-head.fif"):
-        mne.bem.make_watershed_bem(subject=subj, subjects_dir=subjects_dir, overwrite=True)
+    this_subjects_dir = fnr.get_filename(subj, "subjects_dir")
+    if not os.path.isfile(this_subjects_dir + "/" + subj + "/bem/" + subj + "-head.fif"):
+        mne.bem.make_watershed_bem(subject=subj, subjects_dir=this_subjects_dir, overwrite=True)
 
 
 # Cortex Source space
@@ -77,7 +78,7 @@ for subj in subjects:
         srcfilename = fnr.get_filename(subj, spacing)
         if not os.path.isfile(srcfilename):
             src = mne.setup_source_space(subj, spacing = spacing, 
-                                            subjects_dir = subjects_dir, 
+                                            subjects_dir = this_subjects_dir, 
                                             n_jobs=n_jobs, 
                                             verbose=True)
             mne.write_source_spaces(srcfilename, src, overwrite=True, verbose=True)
@@ -87,7 +88,7 @@ for subj in subjects:
     srcfilename = fnr.get_filename(subj, "vol-src")
     if not os.path.isfile(srcfilename):
         src_vol = mne.setup_volume_source_space(subj, pos=3.0, 
-                                        subjects_dir = subjects_dir, 
+                                        subjects_dir = this_subjects_dir, 
                                         volume_label=volume_label,
                                         single_volume=single_volume,
                                         verbose=True)
@@ -98,7 +99,7 @@ for subj in subjects:
     bem_save_name = fnr.get_filename(subj, "single-shell-model")
     bem = mne.make_bem_model(subj, ico=4, 
                     conductivity=BEM_single_shell,   
-                    subjects_dir=subjects_dir, verbose=True)
+                    subjects_dir=this_subjects_dir, verbose=True)
     mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
 
     bem_sol_filename = fnr.get_filename(subj, "single-shell-BEM-sol")
@@ -112,7 +113,7 @@ for subj in subjects:
     bem_save_name = fnr.get_filename(subj, "3-layer-BEM-model")
     bem = mne.make_bem_model(subj, ico=4, 
                     conductivity=BEM_three_layer,   
-                    subjects_dir=subjects_dir, verbose=True)
+                    subjects_dir=this_subjects_dir, verbose=True)
     mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
 
     bem_sol_filename = fnr.get_filename(subj, "3-layer-BEM-sol")

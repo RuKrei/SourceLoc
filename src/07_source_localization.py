@@ -34,11 +34,12 @@ for subj in subjects:
     # load manually, as BIDS query returns all kinds of things...
     target_dir = os.path.join(derivatives_root, subsubj, "ses-resting", "meg", subsubj)
     all_raws = glob.glob(target_dir + "*tsssTransEvePreproc_meg.fif")
+    print(f"############\nAll raws = {all_raws}")
 
     if (len(all_raws) > 1) and concat_raws:
         raws = {}
-        for num, raw in enumerate(all_raws):
-            raws[num] = mne.io.read_raw(raw)
+        for num, rawfile in enumerate(all_raws):
+            raws[num] = mne.io.read_raw(rawfile)
         raw = mne.concatenate_raws(list(raws.values()))
     else:     
         raw = read_raw_bids(bids_derivatives)
@@ -49,7 +50,9 @@ for subj in subjects:
     raw.save(fname, overwrite=True)
 
     events, event_ids = mne.events_from_annotations(raw)
-    epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), on_missing = "ignore")
+    epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, 
+                        baseline=(-1.5,-1), on_missing = "ignore",
+                        event_repeated="merge")
     noise_cov = mne.compute_covariance(epochs, tmax=-1, 
                                     #projs=, 
                                     method='auto',
@@ -62,7 +65,7 @@ for subj in subjects:
                                     n_jobs=n_jobs)
     for event in event_ids.keys():
         eventname = str(event)
-        if eventname == "ignore_me" or eventname == "AAA":
+        if eventname == "ignore_me" or eventname == "AAA" or ".ungrouped":
             pass
         else:
             e = epochs[eventname].load_data().average()

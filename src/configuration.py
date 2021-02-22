@@ -6,14 +6,14 @@
 
 import os
 
-subjects = ["johndoe"] # ["MA17011989"]   # ["PP05071984"] # ["BF28011991"] #   # "*" means every subject in data_root
+subjects = ["MKE03101965"]  # ["johndoe"] # ["MA17011989"]   # ["PP05071984"] # ["BF28011991"] #   # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 #where am I?
-beast =  False
+beast =  True
 candice = False
-h_beast = True
+h_beast = False
 
 # BIDS inputs
 if beast:
@@ -61,12 +61,12 @@ n_grad = 1          # number of Vectors to apply for gradiometers
 n_mag = 1           # number of Vectors to apply for magnetometers
 n_eeg = 1           # number of Vectors to apply for eeg
 ecg_channel=None
-do_ecg_correction_ssp = True
+do_ecg_correction_ssp = False
 do_ecg_correction_ica = False
 do_ecg_correction_regression = False
 
 eog_channel=None
-do_eog_correction_ssp = True
+do_eog_correction_ssp = False
 do_eog_correction_ica = False
 do_eog_correction_regression = False
 
