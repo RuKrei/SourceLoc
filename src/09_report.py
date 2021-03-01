@@ -17,7 +17,7 @@ from configuration import (subjects, subjects_dir, n_jobs, derivatives_root, ext
 from utils.utils import FileNameRetriever
 
 mne.viz.set_3d_backend("pyvista")
-matplotlib.rcParams["figure.facecolor"] = "white"
+#matplotlib.rcParams["figure.facecolor"] = "white"
 
 fnr = FileNameRetriever(derivatives_root)
 
@@ -66,6 +66,7 @@ def plot_time_course(series, event='GR_1', filename=None):
     mpimg_img = mpimg.imread(sorted(series)[5]) 
     ax6.imshow(mpimg_img)
     
+    #fig.faceclolor = "black"
     return fig
 
 
@@ -106,21 +107,32 @@ for subj in subjects:
 
     # Epochs
     #bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
-    #                    root=derivatives_root, processing="tsssTransEvePreproc")    
+    #                    root=derivatives_root, processing="finalEpochs_meg")    
     #raw = read_raw_bids(bids_derivatives)
     events, event_ids = mne.events_from_annotations(raw)
+    print (f"event_ids: {event_ids}")
+    to_drop = []
+    for e in event_ids:
+        if e.lower() == "ignore_me" or e.upper() == "AAA" or e.startswith("."):
+            to_drop.append(e)
+    if len(to_drop) > 0:
+        for todr in to_drop:
+            del event_ids[todr]
+    print (f"event_ids (after deletion of unwanted events): {event_ids}")
     epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), 
                         on_missing = "ignore", event_repeated="merge")
     events = epochs.event_id
-    print("\n Events are: ", events)
     
     if events.keys() != []:
         spike_folder = fnr.get_filename(subsubj, "spikes")
         desired_events = glob.glob(spike_folder + "/*")
         #print (desired_events)
+        """    
         for e in desired_events:
             e = e.split("/")[-1]
-            if e.lower() == "ignore_me" or e.upper() == "AAA" or e.startswith("."):
+        """
+        for e in events:
+            if e.lower() == "ignore_me" or e.upper() == "AAA" or e.startswith("."): # pointless double check
                 print (f"Omitting {e} from Analysis")
             elif e in events:
                 print(f"Adding data from {e} to report...")
@@ -158,10 +170,11 @@ for subj in subjects:
                         cst_title = cst_title.split('.')[0]
                         caption = e + ' --> ' + cst_title
                         report.add_images_to_section(cst, section=e, captions=caption)
+                #matplotlib.rcParams["figure.facecolor"] = "black"
                 if custom_ts is not []:    
                     for cts in custom_ts:
                         caption = e + ' --> Time course'
-                        fig = plt.figure(figsize=(30, 30), dpi=150)
+                        fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
                         fig = plot_time_course(sorted(custom_ts), event=e)
                         plt.tight_layout()
                         report.add_figs_to_section(fig, section=e, captions=caption)
@@ -177,7 +190,7 @@ for subj in subjects:
             if str(band) in freq_file.split("/")[-1]:
                 for xhemi_file in xhemi_files:
                     if str(band) in xhemi_file.split("/")[-1]:
-                        fig = plt.Figure(facecolor="black")
+                        fig = plt.Figure(facecolor="k")
                         fig.set_figwidth(15)
                         fig.set_figheight(15)
                         
@@ -238,7 +251,6 @@ for subj in subjects:
                         cap = 'Freq.-Distribution --> ' + str(band)
                         sec = "Freqs"
                         report.add_figs_to_section(fig, section=sec, captions=cap)
-        matplotlib.rcParams["figure.facecolor"] = "white"
 
 
     # Addendum
