@@ -69,6 +69,87 @@ def plot_time_course(series, event='GR_1', filename=None):
     #fig.faceclolor = "black"
     return fig
 
+def plot_ECD_table(T1_imgs=None, drei_D_imgs=None, event='GR_1'):
+    fig = plt.Figure(figsize=(15,25))
+    
+    # T1 imgs
+    ax1 = fig.add_subplot(5, 2, 1)
+    ax1.set_title('minus 20 ms')
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    mpimg_img = mpimg.imread(T1_imgs[4]) 
+    ax1.imshow(mpimg_img)
+    
+    ax2 = fig.add_subplot(5, 2, 3)
+    ax2.set_title('minus 15 ms')
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    mpimg_img = mpimg.imread(T1_imgs[3]) 
+    ax2.imshow(mpimg_img)
+    
+    ax3 = fig.add_subplot(5, 2, 5)
+    ax3.set_title('minus 10 ms')
+    ax3.set_xticks([])
+    ax3.set_yticks([])
+    mpimg_img = mpimg.imread(T1_imgs[2]) 
+    ax3.imshow(mpimg_img)
+    
+    ax4 = fig.add_subplot(5, 2, 7)
+    ax4.set_title('minus 5 ms')
+    ax4.set_xticks([])
+    ax4.set_yticks([])
+    mpimg_img = mpimg.imread(T1_imgs[1]) 
+    ax4.imshow(mpimg_img)
+    
+    ax5 = fig.add_subplot(5, 2, 9)
+    ax5.set_title('peak')
+    ax5.set_xticks([])
+    ax5.set_yticks([])
+    mpimg_img = mpimg.imread(T1_imgs[0]) 
+    ax5.imshow(mpimg_img)
+    
+    
+    # 3D imgs
+    ax6 = fig.add_subplot(5, 2, 2)
+    #ax6.set_title('minus 20 ms')
+    ax6.set_xticks([])
+    ax6.set_yticks([])
+    mpimg_img = mpimg.imread(drei[4]) 
+    ax6.imshow(mpimg_img)
+    
+    ax7 = fig.add_subplot(5, 2, 4)
+    #ax7.set_title('minus 15 ms')
+    ax7.set_xticks([])
+    ax7.set_yticks([])
+    mpimg_img = mpimg.imread(drei[3]) 
+    ax7.imshow(mpimg_img)
+    
+    ax8 = fig.add_subplot(5, 2, 6)
+    #ax8.set_title('minus 10 ms')
+    ax8.set_xticks([])
+    ax8.set_yticks([])
+    mpimg_img = mpimg.imread(drei[2]) 
+    ax8.imshow(mpimg_img)
+    
+    ax9 = fig.add_subplot(5, 2, 8)
+    #ax9.set_title('minus 5 ms')
+    ax9.set_xticks([])
+    ax9.set_yticks([])
+    mpimg_img = mpimg.imread(drei[1]) 
+    ax9.imshow(mpimg_img)
+    
+    ax10 = fig.add_subplot(5, 2, 10)
+    #ax10.set_title('peak')
+    ax10.set_xticks([])
+    ax10.set_yticks([])
+    mpimg_img = mpimg.imread(drei[0]) 
+    ax10.imshow(mpimg_img)
+    
+    
+    fig.suptitle(str(event + ' - ECD'), fontsize=12)
+    fig.tight_layout()
+    return fig
+
 
 
 for subj in subjects:
@@ -151,7 +232,12 @@ for subj in subjects:
                 dSPM_file = glob.glob(generic_pics_folder + "/*_dSPM.png")
                 #eLO_file = glob.glob(generic_pics_folder + "/*_eLORETA.png")
                 eLO_peak_file = glob.glob(generic_pics_folder + "/*_eLORETA_with_peaks.png")
-
+                # add ECD-picks
+                drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
+                T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
+                ECD_fig = plot_ECD_table(T1_imgs=T1, drei_D_imgs=drei, event='e')
+                
+                # custom pics
                 custom_pics_folder = os.path.join(spike_folder, e, "custom_pics")
                 custom_pics = glob.glob(custom_pics_folder + "/*.png")
                 custom_ts_folder = os.path.join(spike_folder, e, "custom_time_series")
@@ -163,6 +249,9 @@ for subj in subjects:
                 report.add_images_to_section(dSPM_file, captions=caption, section=e)
                 caption = str(e) + ' --> eLORETA + peaks'
                 report.add_images_to_section(eLO_peak_file, captions=caption, section=e)
+                # ECD fig
+                caption = str(e) + ' --> Equivalent current dipole model'
+                report.add_figs_to_section(ECD_fig, captions=caption, section=e)
                 # custom pics
                 if custom_pics is not []:
                     for cst in custom_pics:
@@ -284,12 +373,9 @@ for subj in subjects:
 
 """
 To do:
-create report in .html and in .pdf format
 postprocessor in order to append custom pics etc.
-make beautiful + informative visualizations/graphs
 explain in report why something is analysed + clinical relevance
     i.e. unilateral focal slowing in MEG 95-100% chance of ipsilateral seizure onset...
     add relevant literature
-
 add disclaimer + title file to report dir (in 01_create_DS_and_folders)
 """
