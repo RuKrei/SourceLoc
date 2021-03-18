@@ -6,13 +6,13 @@
 
 import os
 
-subjects = ["MKE03101965"]  # ["johndoe"] # ["MA17011989"]   # ["PP05071984"] # ["BF28011991"] #   # "*" means every subject in data_root
+subjects = ["BF28011991"] #  ["MKE03101965"]  # ["johndoe"] # ["MA17011989"]   # ["PP05071984"] #  # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 #where am I?
-beast =  True
-candice = False
+beast =  False
+candice = True
 h_beast = False
 
 # BIDS inputs
