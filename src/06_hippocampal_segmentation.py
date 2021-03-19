@@ -55,6 +55,7 @@ use freesurfers asegstats2table for subjects (bash) and extract from there
 visualize single subjects segmentation and statistics:
     right to left difference?
     hippocampi too small relative to brain volume?
+    --> i.e. left hippo in proportion to left gray/whit/overall volume
 visualize single subject and statistics vs. grand average of healthy subjects in same age bin
 
 --> doesn't work yet.

@@ -6,19 +6,20 @@
 
 import os
 
-subjects = ["BF28011991"] #  ["MKE03101965"]  # ["johndoe"] # ["MA17011989"]   # ["PP05071984"] #  # "*" means every subject in data_root
+subjects = ["LL23052000"]  # ["BF28011991"] #  ["MKE03101965"]  # ["johndoe"] # ["MA17011989"]   # ["PP05071984"] #  # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 #where am I?
-beast =  False
-candice = True
+beast =  True
+candice = False
 h_beast = False
 
 # BIDS inputs
 if beast:
     bids_root = "/home/idrael/DATA/MEG/SourceLocTest/BIDSTestData"      #beast
     data_root = "/home/idrael/DATA/MEG/SourceLocTest/input_folder"      #beast
+    input_folder = "/home/idrael/DATA/MEG/new_patients"
 
 if candice:
     bids_root = "/Users/idrael/Playground/SourceLocTest/BIDSTestData"           #candice

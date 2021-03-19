@@ -15,11 +15,17 @@ from mne_bids import BIDSPath, write_raw_bids, print_dir_tree, write_anat, make_
 import os
 import mne_bids
 from configuration import subjects, session, bids_root, data_root, derivatives_root
-from utils.utils import RawPreprocessor
+from utils.utils import RawPreprocessor, FileNameRetriever, recursive_overwrite
 import glob
 import mne
 from dicom2nifti import convert_directory
+import shutil
+import subprocess
 
+
+## helper functions
+def run_shell_command(command):
+    subprocess.run(command, shell=True, capture_output=True, check=True)
 
 def convert_dcm_folder(subj):
     try:
@@ -114,6 +120,38 @@ for subj in subjects:
 # 3. DataSet description
 make_dataset_description(bids_root, name="CDK Epilepsy Dataset", data_license="closed", authors="Rudi Kreidenhuber", overwrite=True)
 
+
+# 4. Copy Vizualizer, fsaverage(_sym) and report generator + dependent files to report directory for later independent use
+for subj in subjects:
+    fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
+    freport = os.path.join(fbase, "report")
+    fanat = os. path.join(fbase, "freesurfer")
+    fs_avg = os.path.join(data_root, "extras", "fsaverage")
+    fs_avg_sym = os.path.join(data_root, "extras", "fsaverage_sym")
+    disclaimer = os.path.join(data_root, "extras", "MEG_disclaimer.png")
+    title = os.path.join(data_root, "extras", "MEG_title.png")
+    report_files = [disclaimer, title]
+    ana_files = [fs_avg, fs_avg_sym]
+    # copy disclaimer and title for report
+    for f in report_files:
+        if not os.path.isfile(f):
+            recursive_overwrite(f, freport)
+    #copy fsaverage + fsaverage_sym to local subjects anatomy folder
+    for f in ana_files:
+        if not os.path.isdir(f):
+            recursive_overwrite(f, fanat)
+    # copy visualizer and report generator
+    visualizer = os.path.abspath(os.path.relpath("./10_visualizer.ipynb"))
+    reporter = os.path.abspath(os.path.relpath("./report.ipynb"))
+    files = [visualizer, reporter]
+    for f in files:
+        if not os.path.isfile(f):
+            recursive_overwrite(f, freport)
+    
+    
+    
+    
+    
 print_dir_tree(bids_root)
 
 

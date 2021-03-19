@@ -42,7 +42,8 @@ for subj in subjects:
             raws[num] = mne.io.read_raw(rawfile)
         raw = mne.concatenate_raws(list(raws.values()))
     else:     
-        raw = read_raw_bids(bids_derivatives)
+        # raw = read_raw_bids(bids_derivatives)   # this fails again, using bare MNE to load data file
+        raw = mne.io.read_raw(all_raws[0])
     
     bids_derivatives.update(processing="finalEpochs", session="99")
     fname = os.path.join(derivatives_root, subsubj, "ses-resting", "meg", bids_derivatives.basename)
@@ -56,18 +57,21 @@ for subj in subjects:
     noise_cov = mne.compute_covariance(epochs, tmax=-1, 
                                     #projs=, 
                                     method='auto',
-                                    n_jobs=n_jobs)
+                                    n_jobs=n_jobs,
+                                    rank="full")
     data_cov = mne.compute_covariance(epochs,
                                     tmin=-0.5, 
                                     tmax=0.3, 
                                     #projs=, 
                                     method='auto',
                                     n_jobs=n_jobs)
+    print(f"event_ids.keys = {event_ids.keys()}")
     for event in event_ids.keys():
         eventname = str(event)
-        if eventname == "ignore_me" or eventname == "AAA" or ".ungrouped":
-            pass
+        if eventname == "ignore_me" or eventname == "AAA" or eventname == ".ungrouped":
+            print(f"Omitting event {event}")
         else:
+            print(f"\n\n\nNow processing event: {event}")
             e = epochs[eventname].load_data().average()
             spike_folder = fnr.get_filename(subsubj, "spikes")
             e_folder = os.path.join(spike_folder, eventname)
