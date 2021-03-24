@@ -51,25 +51,36 @@ for subj in subjects:
 
         # ECG artifacts
         if do_ecg_correction_ssp:
-            ecg_artifact = mne.preprocessing.create_ecg_epochs(raw, ch_name=ecg_channel)
-            ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg)
-            raw.add_proj(ecg_projs)
-            raw.apply_proj(ecg_projs, verbose=None)
-            fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
-            savename = os.path.join(preproc_folder, "ECG_projs_Topomap.png")
-            fig.savefig(savename)
+            # It's smarter to supervise this step (--> look at the topomaps!)
+            try:
+                ecg_artifact = mne.preprocessing.create_ecg_epochs(raw, ch_name=ecg_channel)
+                ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg)
+                # lets not do this now......
+                #raw.add_proj(ecg_projs)
+                #raw.apply_proj(ecg_projs, verbose=None)
+                fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
+                savename = os.path.join(preproc_folder, "ECG_projs_Topomap.png")
+                fig.savefig(savename)
+            except Exception as e:
+                print(e)
+                print("ECG - Atrifact correction failed!")
 
         #EOG artifacts    
         if do_eog_correction_ssp:
-            eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
-            #eog_evoked.apply_baseline((None, None))
-            eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
-                                                        n_jobs=n_jobs)
-            raw.add_proj(eog_projs).apply_proj()
-            figs = eog_evoked.plot_joint(show=False)
-            for idx, fig in enumerate(figs):
-                savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")
-                fig.savefig(savename)
+            # It's a bad idea to do this in an automated step
+            try:
+                eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
+                #eog_evoked.apply_baseline((None, None))
+                eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
+                                                            n_jobs=n_jobs)
+                #raw.add_proj(eog_projs).apply_proj()
+                figs = eog_evoked.plot_joint(show=False)
+                for idx, fig in enumerate(figs):
+                    savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")
+                    fig.savefig(savename)
+            except Exception as e:
+                print(e)
+                print("EOG - Atrifact correction failed!")
 
         # save - if events have been found
         events, event_ids = mne.events_from_annotations(raw)

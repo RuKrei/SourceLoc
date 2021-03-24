@@ -37,10 +37,25 @@ for subj in subjects:
     print(f"############\nAll raws = {all_raws}")
 
     if (len(all_raws) > 1) and concat_raws:
-        raws = {}
-        for num, rawfile in enumerate(all_raws):
-            raws[num] = mne.io.read_raw(rawfile)
-        raw = mne.concatenate_raws(list(raws.values()))
+        try:
+            raws = {}
+            for num, rawfile in enumerate(all_raws):
+                raws[num] = mne.io.read_raw(rawfile)
+            raw = mne.concatenate_raws(list(raws.values()))
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print("Rawfiles have been concatenated....")
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed trying to concatenate multiple raw files --> {e}")
+            print("Loading only first raw file!")
+            raw = mne.io.read_raw(all_raws[0])
     else:     
         # raw = read_raw_bids(bids_derivatives)   # this fails again, using bare MNE to load data file
         raw = mne.io.read_raw(all_raws[0])
@@ -114,7 +129,7 @@ for subj in subjects:
                     img_f_name = ('img_stc_' + subj + '_' + eventname + '_' + m + '.png')
                     img_f_name = os.path.join(gp_folder, img_f_name)
                     brain.save_image(img_f_name)
-                    stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m + "-stc.h5")
+                    stc_f_name = ('stc_' + subj + '_' + eventname + '_' + m + "-dSPM")
                     stc_f_name = os.path.join(e_folder, stc_f_name)
                     e.save(stc_f_name)
                 else:

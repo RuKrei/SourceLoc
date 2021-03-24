@@ -134,25 +134,35 @@ for subj in subjects:
     ana_files = [fs_avg, fs_avg_sym]
     # copy disclaimer and title for report
     for f in report_files:
-        if not os.path.isfile(f):
-            recursive_overwrite(f, freport)
+        try:
+            fi = f.split("/")[-1]
+            target = os.path.join(freport, fi)
+            shutil.copyfile(f, target)
+        except Exception as e:
+            print(e)
     #copy fsaverage + fsaverage_sym to local subjects anatomy folder
     for f in ana_files:
-        if not os.path.isdir(f):
+        try:
             recursive_overwrite(f, fanat)
+        except Exception as e:
+            print(e)
     # copy visualizer and report generator
     visualizer = os.path.abspath(os.path.relpath("./10_visualizer.ipynb"))
     reporter = os.path.abspath(os.path.relpath("./report.ipynb"))
     files = [visualizer, reporter]
     for f in files:
-        if not os.path.isfile(f):
-            recursive_overwrite(f, freport)
+        try:
+            fi = f.split("/")[-1]
+            target = os.path.join(freport, fi)
+            shutil.copyfile(f, target)
+        except Exception as e:
+            print(e)
     
     
     
     
     
-print_dir_tree(bids_root)
+#print_dir_tree(bids_root)
 
 
 """

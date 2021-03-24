@@ -13,7 +13,7 @@ import pdb
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from configuration import (subjects, subjects_dir, n_jobs, derivatives_root, extras_dir, freq_bands, session)
+from configuration import (subjects, subjects_dir, n_jobs, derivatives_root, freq_bands, session)
 from utils.utils import FileNameRetriever
 
 mne.viz.set_3d_backend("pyvista")
@@ -181,7 +181,7 @@ for subj in subjects:
 
 
     # Add title image
-    cover_file = extras_dir + '/MEG_title.png'
+    cover_file = report_folder + '/MEG_title.png'
     cover_title = (subj + ' MEG Befund')
     report.add_images_to_section(cover_file, section=cover_title, captions=cover_title) 
 
@@ -360,7 +360,7 @@ for subj in subjects:
                 
 
     # Add disclaimer image
-    disclaimer_file = extras_dir + '/MEG_disclaimer.png'
+    disclaimer_file = report_folder + '/MEG_disclaimer.png'
     report.add_images_to_section(disclaimer_file, section='disclaimer', captions='End notes')   
 
     ### Save all

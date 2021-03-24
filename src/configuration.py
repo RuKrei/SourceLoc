@@ -109,7 +109,7 @@ do_source_loc = True                                    # perform source localiz
 
 use_source_model_for_sourceloc = "ico4"                 # Options = "oct6", "oct5", "ico4", "ico5"
 do_volume_source_loc = False
-use_fwd_model_for_sourceloc = "3-layer-BEM-sol"         # or:   "single-shell-BEM-sol"  
+use_fwd_model_for_sourceloc = "single-shell-BEM-sol" #"3-layer-BEM-sol"         # or:   "single-shell-BEM-sol"  
 source_loc_methods = ["dSPM", "eLORETA"]                # "MNE"
 vol_source_loc_methods = "eLORETA"
 signal_to_noise_ratio = 3.
@@ -126,10 +126,3 @@ dip_times = {   'min20ms':  (-0.025,-0.020),            # Time points in Milisec
                 'min10ms':  (-0.014,-0.010),
                 'min5ms':  (-0.009,-0.005),
                 'peak':     (-0.004,0.000)}
-
-"""
-To do:
-add a do_anatomy_only variable to do just the anatomy-stuff (or add a .sh file that does only that...)
-
-
-"""

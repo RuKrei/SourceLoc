@@ -6,7 +6,7 @@
 import os
 import numpy as np
 from configuration import (subjects, n_jobs, derivatives_root, use_source_model_for_freq, 
-                            pick_meg, pick_eeg, freq_bands, concat_raws, session)
+                            pick_meg, pick_eeg, freq_bands, concat_raws, session, use_fwd_model_for_sourceloc)
 import mne
 from mne.minimum_norm import compute_source_psd, make_inverse_operator
 from utils.utils import FileNameRetriever, plot_freq_band_dors, plot_freq_band_lat, plot_freq_band_med, recursive_overwrite
@@ -36,7 +36,7 @@ for subj in subjects:
      
         # files to import:
         trans = fnr.get_single_trans_file(subsubj)
-        bem_sol = fnr.get_filename(subsubj, file="3-layer-BEM-sol")
+        bem_sol = fnr.get_filename(subsubj, file=use_fwd_model_for_sourceloc)
         src = fnr.get_filename(subsubj, file=use_source_model_for_freq)
         fwd_name = fnr.get_filename(subj=subsubj, file="fwd")
         freq_MNE_folder = fnr.get_filename(subj=subsubj, file="freqMNE")
