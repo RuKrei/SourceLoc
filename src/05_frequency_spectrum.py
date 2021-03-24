@@ -26,6 +26,11 @@ for subj in subjects:
                                 task="resting", root=derivatives_root, processing="tsssTransEvePreproc")
     
     all_raws = bids_derivatives.match()
+    if all_raws == None:
+        # maybe no Events --> load tsssTransNoEvePreproc-file
+        bids_derivatives.update(processing="tsssTransNoEvePreproc")
+        all_raws = bids_derivatives.match()
+    
     for raw in all_raws:
         raw = read_raw_bids(raw)
      

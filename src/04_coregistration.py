@@ -20,12 +20,19 @@ for subj in subjects:
     
     #load data
     # This should actually be:
-    #raw = read_raw_bids(bids_path=bids_derivatives)
+    #try:
+    #    raw = read_raw_bids(bids_path=bids_derivatives)
+    #except Exception as e:
+    #    print(e)
+    #    print("Looking for a proprocessed fif-file without Events...")
+    #    bids_derivatives.update(processing="tsssTransNoEvePreproc")
     
     # loading manually, as BIDS query returns all kinds of things...
     target_dir = os.path.join(derivatives_root, subsubj, "ses-resting", "meg", subsubj)
     rawfile = glob.glob(target_dir + "*tsssTransEvePreproc_meg.fif")[0]
-    #raw = mne.io.read_raw(rawfile)
+    # if no events
+    if rawfile == None:
+        rawfile = glob.glob(target_dir + "*tsssTransNoEvePreproc_meg.fif")[0]
 
     
     if use_single_transfile == True:

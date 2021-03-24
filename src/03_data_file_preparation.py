@@ -71,10 +71,17 @@ for subj in subjects:
                 savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")
                 fig.savefig(savename)
 
-        # save
+        # save - if events have been found
         events, event_ids = mne.events_from_annotations(raw)
-        raw_temp = os.path.join(preproc_folder, "temp.fif")
-        raw.save(raw_temp, overwrite=True)
-        raw = mne.io.read_raw(raw_temp, preload=False)
-        bids_derivatives.update(processing="tsssTransEvePreproc", run=run)                       
-        write_raw_bids(raw, bids_derivatives, overwrite=True)
+        if len(events) > 0:
+            raw_temp = os.path.join(preproc_folder, "temp.fif")
+            raw.save(raw_temp, overwrite=True)
+            raw = mne.io.read_raw(raw_temp, preload=False)
+            bids_derivatives.update(processing="tsssTransEvePreproc", run=run)                       
+            write_raw_bids(raw, bids_derivatives, overwrite=True)
+        else:
+        # save - if no events
+            raw.save(raw_temp, overwrite=True)
+            bids_derivatives.update(processing="tsssTransNoEvePreproc", run=run)                       
+            write_raw_bids(raw, bids_derivatives, overwrite=True)
+        
