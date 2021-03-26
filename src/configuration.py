@@ -68,7 +68,7 @@ do_ecg_correction_ica = False
 do_ecg_correction_regression = False
 
 eog_channel=None
-do_eog_correction_ssp = True
+do_eog_correction_ssp = False
 do_eog_correction_ica = False
 do_eog_correction_regression = False
 
