@@ -20,7 +20,7 @@ h_beast = False
 if beast:
     bids_root = "/home/idrael/DATA/MEG/SourceLocTest/BIDSTestData"      #beast
     data_root = "/home/idrael/DATA/MEG/SourceLocTest/input_folder"      #beast
-    input_folder = "/home/idrael/DATA/MEG/new_patients"
+    #input_folder = "/home/idrael/DATA/MEG/SourceLocTest/"
 
 if candice:
     bids_root = "/Users/idrael/Playground/SourceLocTest/BIDSTestData"           #candice
@@ -33,7 +33,7 @@ if h_beast:
 
 session = "resting"
 derivatives_root = os.path.join(bids_root, "derivatives")
-extras_dir = os.path.join(bids_root, "..", "extras")
+extras_dir = os.path.join(data_root, "extras")
 
 if subjects == ["*"]:
     subjects = os.listdir(data_root)

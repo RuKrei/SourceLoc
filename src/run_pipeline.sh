@@ -11,12 +11,16 @@
 #python /home/idrael/DATA/git/SourceLoc/src/06_hippocampal_segmentation.py
 #python /home/idrael/DATA/git/SourceLoc/src/07_source_localization.py
 # python -i /home/idrael/DATA/git/SourceLoc/src/08_connectivity.py
-# Report and visualizer should run from subjects report folder either as .ipynb (generic) or 
-# bendable to the users will --> the 09_run_reoprt.py and 10_visualizer.py files are merely 
-# fancy link generators
+#python /home/idrael/DATA/git/SourceLoc/src/09_report.py
 
-python /home/idrael/DATA/git/SourceLoc/src/09_run_report.py
-#code /home/idrael/DATA/git/SourceLoc/src/10_visualizer.ipynb
-#jupyter nbconvert --to python /home/idrael/DATA/git/SourceLoc/src/report.ipynb  # should be run from results dir 
-#python /home/idrael/DATA/git/SourceLoc/src/report.py
-#   ---> 09_report.py should execute this as a shell command
+echo "You can now create screenshots and inspect the time series via double-click on"
+echo "BIDS-Directory  --> /derivatives/SUBJECTNAME/report/10_visualizer.ipynb"
+echo
+echo
+
+echo "Finished? Update report? Then type y (y, *.&%$v.') "
+read postproc
+
+if [ "$postproc" = y ]; then
+    python /home/idrael/DATA/git/SourceLoc/src/09_report.py
+fi
