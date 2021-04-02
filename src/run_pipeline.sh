@@ -10,7 +10,7 @@
 #python /home/idrael/DATA/git/SourceLoc/src/05_frequency_spectrum.py
 #python /home/idrael/DATA/git/SourceLoc/src/06_hippocampal_segmentation.py
 #python /home/idrael/DATA/git/SourceLoc/src/07_source_localization.py
-# python -i /home/idrael/DATA/git/SourceLoc/src/08_connectivity.py
+# #python -i /home/idrael/DATA/git/SourceLoc/src/08_connectivity.py
 #python /home/idrael/DATA/git/SourceLoc/src/09_report.py
 
 echo "You can now create screenshots and inspect the time series via double-click on"
