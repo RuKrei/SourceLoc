@@ -14,7 +14,7 @@ DICOM-directories are converted to .nii.gz before moving
 
 import os
 import shutil
-from configuration import input_folder, data_root
+from configuration import input_folder, data_root, subjects
 
 
 # helper functions
@@ -36,25 +36,20 @@ def recursive_overwrite(src, dest, ignore=None):
         shutil.copyfile(src, dest)
 
 
-
-# look for folders in input_folder
-subject_names = os.listdir(input_folder)
-
-# if not none
-if not subject_names == []:
-    for s in subject_names:
-        # define target directory
-        target = os.path.join(data_root, s)
-        if os.path.isdir(target):
-            pass
-        else:
-            # create target directory
-            os.mkdir(target)
-            print(f"Directory >> {target} << created.")
-            # copy files to target directory
-            destination = os.path.join(target, s)
-            source = os.path.join(input_folder, s)
-            try:
-                recursive_overwrite(source, destination)
-            except FileNotFoundError:
-                print(f"No DICOM files found for Patient: {s}")
+for s in subjects:
+    # define target directory
+    target = os.path.join(data_root, s)
+    print(f"Target-directory --> {target}")
+    if os.path.isdir(target):
+        pass
+    else:
+        # create target directory
+        os.mkdir(target)
+        print(f"Directory >> {target} << created.")
+        # copy files to target directory
+        destination = os.path.join(target, s)
+        source = os.path.join(input_folder, s)
+        try:
+            recursive_overwrite(source, destination)
+        except FileNotFoundError:
+            print(f"No DICOM files found for Patient: {s}")

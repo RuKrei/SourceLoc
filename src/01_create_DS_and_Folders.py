@@ -146,17 +146,15 @@ for subj in subjects:
             recursive_overwrite(f, fanat)
         except Exception as e:
             print(e)
-    # copy visualizer and report generator
+    # copy visualizer
     visualizer = os.path.abspath(os.path.relpath("./10_visualizer.ipynb"))
     reporter = os.path.abspath(os.path.relpath("./report.ipynb"))
-    files = [visualizer, reporter]
-    for f in files:
-        try:
-            fi = f.split("/")[-1]
-            target = os.path.join(freport, fi)
-            shutil.copyfile(f, target)
-        except Exception as e:
-            print(e)
+    try:
+        fi = visualizer.split("/")[-1]
+        target = os.path.join(freport, fi)
+        shutil.copyfile(visualizer, target)
+    except Exception as e:
+        print(e)
     
     
     
