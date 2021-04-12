@@ -26,6 +26,7 @@ for subj in subjects:
                                 task="resting", root=derivatives_root, processing="tsssTransEvePreproc")
     
     all_raws = bids_derivatives.match()
+    print(f"All raws for Freq distirbution: {all_raws}")
     if all_raws == None:
         # maybe no Events --> load tsssTransNoEvePreproc-file
         bids_derivatives.update(processing="tsssTransNoEvePreproc")

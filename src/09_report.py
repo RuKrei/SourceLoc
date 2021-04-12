@@ -158,6 +158,7 @@ for subj in subjects:
     meg_folder = os.path.join(derivatives_root, subsubj, "ses-resting", "meg")
     report_folder = fnr.get_filename(subsubj, "report")
     spike_folder = fnr.get_filename(subsubj, "spikes")
+    ev_in_spike_folder = glob.glob(spike_folder + "/*")
     fif = glob.glob(meg_folder + "/*finalEpochs_meg.fif")
     print(f" fif --> {fif}")
     raw = mne.io.read_raw(fif[-1])
@@ -201,75 +202,79 @@ for subj in subjects:
         for todr in to_drop:
             del event_ids[todr]
     print (f"event_ids (after deletion of unwanted events): {event_ids}")
-    epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), 
-                        on_missing = "ignore", event_repeated="merge")
-    events = epochs.event_id
-    
-    if events.keys() != []:
-        spike_folder = fnr.get_filename(subsubj, "spikes")
-        desired_events = glob.glob(spike_folder + "/*")
-        #print (desired_events)
-        """    
-        for e in desired_events:
-            e = e.split("/")[-1]
-        """
-        for e in events:
-            if e.lower() == "ignore_me" or e.upper() == "AAA" or e.startswith("."): # pointless double check
-                print (f"Omitting {e} from Analysis")
-            elif e in events:
-                print(f"Adding data from {e} to report...")
-                # Visualize Topomaps
-                cap = str(e) + " --> Topomaps"
-                viz_eve = epochs[e].average().crop(-0.2, 0.2)
-                times = np.linspace(-0.02, 0.01, 6)
-                figs = viz_eve.plot_joint(times=times, show=False)
-                
-                # Add to report
-                for fig in figs:
-                    report.add_figs_to_section(fig, captions=cap, section=e)
+    try:
+        epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, baseline=(-1.5,-1), 
+                            on_missing = "ignore", event_repeated="merge")
+        events = epochs.event_id
 
-                # Find generic and custom pics
-                generic_pics_folder = os.path.join(spike_folder, e, "generic_pics")
-                dSPM_file = glob.glob(generic_pics_folder + "/*_dSPM.png")
-                #eLO_file = glob.glob(generic_pics_folder + "/*_eLORETA.png")
-                eLO_peak_file = glob.glob(generic_pics_folder + "/*_eLORETA_with_peaks.png")
-                # add ECD-picks
-                drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
-                T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
-                ECD_fig = plot_ECD_table(T1_imgs=T1, drei_D_imgs=drei, event='e')
-                
-                # custom pics
-                custom_pics_folder = os.path.join(spike_folder, e, "custom_pics")
-                custom_pics = glob.glob(custom_pics_folder + "/*.png")
-                custom_ts_folder = os.path.join(spike_folder, e, "custom_time_series")
-                custom_ts = glob.glob(custom_ts_folder + "/*.png")
+        if events.keys() != []:
+            spike_folder = fnr.get_filename(subsubj, "spikes")
+            desired_events = os.listdir(spike_folder)
 
-                # Add to report
-                # generics
-                caption = e + ' --> dSPM'
-                report.add_images_to_section(dSPM_file, captions=caption, section=e)
-                caption = str(e) + ' --> eLORETA + peaks'
-                report.add_images_to_section(eLO_peak_file, captions=caption, section=e)
-                # ECD fig
-                caption = str(e) + ' --> Equivalent current dipole model'
-                report.add_figs_to_section(ECD_fig, captions=caption, section=e)
-                # custom pics
-                if custom_pics is not []:
-                    for cst in custom_pics:
-                        cst_title = cst.split('/')[-1]
-                        cst_title = cst_title.split('.')[0]
-                        caption = e + ' --> ' + cst_title
-                        report.add_images_to_section(cst, section=e, captions=caption)
-                #matplotlib.rcParams["figure.facecolor"] = "black"
-                if custom_ts is not []:    
-                    for cts in custom_ts:
-                        caption = e + ' --> Time course'
-                        fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
-                        fig = plot_time_course(sorted(custom_ts), event=e)
-                        plt.tight_layout()
-                        report.add_figs_to_section(fig, section=e, captions=caption)
-                        break
-                                                                                                                                 
+            for e in events:
+                if not e in desired_events:             # means it was deleted in the meantime, as we don't want to show it
+                    print (f"Omitting {e} from Analysis")
+                else:
+                    try:
+                        print(f"Adding data from {e} to report...")
+                        # Visualize Topomaps
+                        cap = str(e) + " --> Topomaps"
+                        viz_eve = epochs[e].average().crop(-0.2, 0.2)
+                        times = np.linspace(-0.02, 0.01, 6)
+                        figs = viz_eve.plot_joint(times=times, show=False)
+
+                        # Add topomaps to report
+                        for fig in figs:
+                            report.add_figs_to_section(fig, captions=cap, section=e)
+
+                        # Find generic and custom pics
+                        generic_pics_folder = os.path.join(spike_folder, e, "generic_pics")
+                        dSPM_file = glob.glob(generic_pics_folder + "/*_dSPM.png")
+                        #eLO_file = glob.glob(generic_pics_folder + "/*_eLORETA.png")
+                        eLO_peak_file = glob.glob(generic_pics_folder + "/*_eLORETA_with_peaks.png")
+                        # add ECD-picks
+                        drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
+                        T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
+                        matplotlib.rcParams["figure.facecolor"] = "black"                 # This doesn't behave nicely
+                        ECD_fig = plot_ECD_table(T1_imgs=T1, drei_D_imgs=drei, event='e')
+                        #matplotlib.rcParams["figure.facecolor"] = "white"
+
+                        # custom pics
+                        custom_pics_folder = os.path.join(spike_folder, e, "custom_pics")
+                        custom_pics = glob.glob(custom_pics_folder + "/*.png")
+                        custom_ts_folder = os.path.join(spike_folder, e, "custom_time_series")
+                        custom_ts = glob.glob(custom_ts_folder + "/*.png")
+
+                        # Add to report
+                        # generics
+                        caption = e + ' --> dSPM'
+                        report.add_images_to_section(dSPM_file, captions=caption, section=e)
+                        caption = str(e) + ' --> eLORETA + peaks'
+                        report.add_images_to_section(eLO_peak_file, captions=caption, section=e)
+                        # ECD fig
+                        caption = str(e) + ' --> Equivalent current dipole model'
+                        report.add_figs_to_section(ECD_fig, captions=caption, section=e)
+                        # custom pics
+                        if custom_pics is not []:
+                            for cst in custom_pics:
+                                cst_title = cst.split('/')[-1]
+                                cst_title = cst_title.split('.')[0]
+                                caption = e + ' --> ' + cst_title
+                                report.add_images_to_section(cst, section=e, captions=caption)
+                        #matplotlib.rcParams["figure.facecolor"] = "black"
+                        if custom_ts is not []:    
+                            for cts in custom_ts:
+                                caption = e + ' --> Time course'
+                                fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
+                                fig = plot_time_course(sorted(custom_ts), event=e)
+                                plt.tight_layout()
+                                report.add_figs_to_section(fig, section=e, captions=caption)
+                                break
+                    except Exception as e:
+                        print(e)
+                    matplotlib.rcParams["figure.facecolor"] = "white"
+    except Exception as e:
+        print(e)                                                                                                                             
     
     freq_folder = fnr.get_filename(subsubj, "freqMNE")
     matplotlib.rcParams["figure.facecolor"] = "black"
