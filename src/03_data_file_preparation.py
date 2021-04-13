@@ -36,6 +36,12 @@ for subj in subjects:
     print(f"\n\nThe following files with processing= \"tsssTransEve\" were found: {bids_derivatives.match()}\n\n")
     all_raws = bids_derivatives.match()
     
+    # if no events have been found, the tsssTransEve file will not exist, so:
+    if all_raws == []:
+        bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
+                                root=derivatives_root, processing="tsssTrans", suffix="meg")
+        all_raws = bids_derivatives.match()
+    
     for run, raw in enumerate(all_raws):
         raw = read_raw_bids(raw)
         run += 1
@@ -92,7 +98,9 @@ for subj in subjects:
             write_raw_bids(raw, bids_derivatives, overwrite=True)
         else:
         # save - if no events
+            raw_temp = os.path.join(preproc_folder, "temp.fif")
             raw.save(raw_temp, overwrite=True)
-            bids_derivatives.update(processing="tsssTransNoEvePreproc", run=run)                       
+            bids_derivatives.update(processing="tsssTransNoEvePreproc", run=run)   
+            raw = mne.io.read_raw(raw_temp, preload=False)                    
             write_raw_bids(raw, bids_derivatives, overwrite=True)
         

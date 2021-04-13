@@ -18,6 +18,10 @@ for subj in subjects:
                                 root=derivatives_root, processing="tsssTransEvePreproc")
     print(f"\n\nThe following files with processing= \"tsssTransEvePreproc\" were found: {bids_derivatives.match()}\n\n")
     
+    if bids_derivatives.match() == []:
+        bids_derivatives = BIDSPath(subject=subj, datatype="meg", session=session, task="resting", 
+                                root=derivatives_root, processing="tsssTransNoEvePreproc")
+    
     #load data
     # This should actually be:
     #try:
@@ -29,9 +33,12 @@ for subj in subjects:
     
     # loading manually, as BIDS query returns all kinds of things...
     target_dir = os.path.join(derivatives_root, subsubj, "ses-resting", "meg", subsubj)
-    rawfile = glob.glob(target_dir + "*tsssTransEvePreproc_meg.fif")[0]
+    try:
+        rawfile = glob.glob(target_dir + "*tsssTransEvePreproc_meg.fif")[0]              #### breaks if rawfile is not found!
+    except Exception as e:
+        print(e)
     # if no events
-    if rawfile == None:
+    if not os.path.isfile(rawfile):
         rawfile = glob.glob(target_dir + "*tsssTransNoEvePreproc_meg.fif")[0]
 
     
