@@ -60,9 +60,10 @@ for subj in subjects:
             # It's smarter to supervise this step (--> look at the topomaps!)
             try:
                 ecg_artifact = mne.preprocessing.create_ecg_epochs(raw, ch_name=ecg_channel)
-                ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg)
+                ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
+                                                                  n_eeg=n_eeg, reject=None)
                 # lets not do this now......
-                #raw.add_proj(ecg_projs)
+                raw.add_proj(ecg_projs, remove_existing=False)
                 #raw.apply_proj(ecg_projs, verbose=None)
                 fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
                 savename = os.path.join(preproc_folder, "ECG_projs_Topomap.png")
@@ -78,8 +79,8 @@ for subj in subjects:
                 eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
                 #eog_evoked.apply_baseline((None, None))
                 eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
-                                                            n_jobs=n_jobs)
-                #raw.add_proj(eog_projs).apply_proj()
+                                                            n_jobs=n_jobs, reject=None)
+                raw.add_proj(eog_projs, remove_existing=False).apply_proj()
                 figs = eog_evoked.plot_joint(show=False)
                 for idx, fig in enumerate(figs):
                     savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")
