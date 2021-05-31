@@ -6,7 +6,10 @@
 
 import os
 
-subjects = ["ARM23082007"]           
+subjects =  ["GV21071998"]  
+# next: ["TP03011978"]
+                            # ["RS10021988"]
+                            # ["ARM23082007"]           
                             # ["GM30091987"]        
                             # ["AD14071990", "PW17081978"]   # "HA11041987",  #["KF28091994"]  # ["FT05042011"] 
                             #["LL23052000"]  # ["BF28011991"] #  ["MKE03101965"]  
@@ -21,9 +24,9 @@ h_beast = False
 
 # BIDS inputs
 if beast:
-    bids_root = "/home/idrael/DATA/MEG/SourceLocTest/BIDSTestData"      #beast
-    data_root = "/home/idrael/DATA/MEG/SourceLocTest/input_folder"      #beast
-    input_folder = "/home/idrael/DATA/MEG/new_patients/"               #change, if data should come from another folder
+    bids_root = "/run/media/meg/DATA/MEG/SourceLocTest/BIDSTestData"      #beast
+    data_root = "/run/media/meg/DATA/MEG/SourceLocTest/input_folder"      #beast
+    input_folder = "/run/media/meg/DATA/MEG/new_patients/"               #change, if data should come from another folder
 
 if candice:
     bids_root = "/Users/idrael/Playground/SourceLocTest/BIDSTestData"           #candice

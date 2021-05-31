@@ -44,13 +44,17 @@ if do_anatomy == True:
             reconall.run()
         else:
             print(f"A freesurfer segmentation of subject {subj} already exists in {subjects_dir}")
+            freesurfered = os.path.join(subjects_dir, subj)
 
         if do_hippocampus_segmentation:
             hippofile = os.path.join(freesurfered, "mri", "lh.hippoSfVolumes-T1.v21.txt")
             if not isfile(hippofile):
-                print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
-                hipposeg = "segmentHA_T1.sh " + subj
-                run_shell_command(hipposeg)
+                try:
+                    print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
+                    hipposeg = "segmentHA_T1.sh " + subj
+                    run_shell_command(hipposeg)
+                except Exception as e:
+                    print(f"Something went wrong with the hippocampal segmentation! --> {e}")
             else:
                 print(f"Omitting hippocampal segmentation for subject {subj}, as it already exists")
            

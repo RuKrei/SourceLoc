@@ -1,31 +1,28 @@
 #!/bin/bash
 
 #bst
-#conda activate MEG
 
-#python /home/idrael/DATA/git/SourceLoc/src/00_prep_input.py
-#python /home/idrael/DATA/git/SourceLoc/src/01_create_DS_and_Folders.py
-#python /home/idrael/DATA/git/SourceLoc/src/02_freesurfer_and_BEM.py
-#python /home/idrael/DATA/git/SourceLoc/src/03_data_file_preparation.py
-python /home/idrael/DATA/git/SourceLoc/src/04_coregistration.py
-python /home/idrael/DATA/git/SourceLoc/src/05_frequency_spectrum.py
-python /home/idrael/DATA/git/SourceLoc/src/06_hippocampal_segmentation.py
-python /home/idrael/DATA/git/SourceLoc/src/07_source_localization.py
-#python -i /home/idrael/DATA/git/SourceLoc/src/08_connectivity.py   #not implemented yet
+python 00_prep_input.py
+python 01_create_DS_and_Folders.py
+python 02_freesurfer_and_BEM.py
+python 03_data_file_preparation.py
+python 04_coregistration.py
+python 05_frequency_spectrum.py
+#python 06_hippocampal_segmentation.py
+python 07_source_localization.py
+#python -i 08_connectivity.py   #not implemented yet
 
-#conda activate MEG_dev
-
-python /home/idrael/DATA/git/SourceLoc/src/09_report.py
+python 09_report.py
 #
-echo "Report has been opened"
-echo "You can now create screenshots and inspect the time series via double-click on"
-echo "BIDS-Directory  --> /derivatives/SUBJECTNAME/report/10_visualizer.ipynb"
-echo
-echo
+#echo "Report has been opened"
+#echo "You can now create screenshots and inspect the time series via double-click on"
+#echo "BIDS-Directory  --> /derivatives/SUBJECTNAME/report/10_visualizer.ipynb"
+#echo
+#echo
 #
-echo "Finished? Update report? Then type y (y, *.&%$v.') "
-read postproc
+#echo "Finished? Update report? Then type y (y, *.&%$v.') "
+#read postproc
 
-if [ "$postproc" = y ]; then
-    python /home/idrael/DATA/git/SourceLoc/src/09_report.py
-fi
+#if [ "$postproc" = y ]; then
+#    python 09_report.py
+#fi

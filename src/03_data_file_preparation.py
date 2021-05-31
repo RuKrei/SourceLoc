@@ -64,7 +64,7 @@ for subj in subjects:
                                                                   n_eeg=n_eeg, reject=None)
                 # lets not do this now......
                 raw.add_proj(ecg_projs, remove_existing=False)
-                #raw.apply_proj(ecg_projs, verbose=None)
+                #raw.apply_proj(ecg_projs, verbose=None) # don't do this in the early stages - see documentation
                 fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
                 savename = os.path.join(preproc_folder, "ECG_projs_Topomap.png")
                 fig.savefig(savename)
@@ -80,7 +80,7 @@ for subj in subjects:
                 #eog_evoked.apply_baseline((None, None))
                 eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
                                                             n_jobs=n_jobs, reject=None)
-                raw.add_proj(eog_projs, remove_existing=False).apply_proj()
+                raw.add_proj(eog_projs, remove_existing=False) # .apply_proj() --> don't do this in the early stages - see documentation
                 figs = eog_evoked.plot_joint(show=False)
                 for idx, fig in enumerate(figs):
                     savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")

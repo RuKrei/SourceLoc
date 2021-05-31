@@ -48,7 +48,7 @@ for subj in subjects:
             print(f"Skipping coregistration, because a transfile ({transfile}) already exists")
         else:
             print(f"\n\n\n--> Transfile should be called: {transfile}\n\n\n")
-            mne.gui.coregistration(subject=subsubj, subjects_dir=subjects_dir, inst=rawfile) # BIDS: inst=raw.filenames[0])
+            mne.gui.coregistration(subject=subsubj, subjects_dir=subjects_dir, inst=rawfile, advanced_rendering=False) # BIDS: inst=raw.filenames[0])
 
 
 """
