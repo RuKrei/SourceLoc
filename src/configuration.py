@@ -6,11 +6,12 @@
 
 import os
 
-subjects =  ["GV21071998"]  
-# next: ["TP03011978"]
-                            # ["RS10021988"]
-                            # ["ARM23082007"]           
-                            # ["GM30091987"]        
+subjects = ["AS27071978"]
+# next: 
+
+# already done              # ["RS10021988"], ["SH15092005"], ["MK28081970"]
+                            # ["ARM23082007"], ["TP03011978"]              
+                            # ["GM30091987"], ["GV21071998"], ["FM12072002"]        
                             # ["AD14071990", "PW17081978"]   # "HA11041987",  #["KF28091994"]  # ["FT05042011"] 
                             #["LL23052000"]  # ["BF28011991"] #  ["MKE03101965"]  
                             # ["johndoe"] # ["MA17011989"]   # ["PP05071984"] #  # "*" means every subject in data_root
@@ -24,9 +25,9 @@ h_beast = False
 
 # BIDS inputs
 if beast:
-    bids_root = "/run/media/meg/DATA/MEG/SourceLocTest/BIDSTestData"      #beast
-    data_root = "/run/media/meg/DATA/MEG/SourceLocTest/input_folder"      #beast
-    input_folder = "/run/media/meg/DATA/MEG/new_patients/"               #change, if data should come from another folder
+    bids_root = "/run/media/meg/DATA/MEG/BIDS_clinic"      #beast
+    data_root = "/home/meg/Schreibtisch/new_patients"      #beast
+    input_folder = "/home/meg/Schreibtisch/new_patients"                  #change, if data should come from another folder
 
 if candice:
     bids_root = "/Users/idrael/Playground/SourceLocTest/BIDSTestData"           #candice

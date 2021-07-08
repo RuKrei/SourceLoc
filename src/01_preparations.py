@@ -1,0 +1,187 @@
+#!/usr/bin/python
+# Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
+# License: BSD (3-clause)
+
+"""
+This file takes care of the input.
+It expects a folder with the subject-name/code + all other files in this folder, except:
+    - DICOM files (folder) are expected to be in ./subjectname/1*/100*/100*/xyz.dcm
+It creates a BIDS compatible folder structure and moves/renames files accordingly
+DICOM-directories are converted to .nii.gz before moving
+
+""" 
+
+from mne_bids import (BIDSPath, write_raw_bids, print_dir_tree, 
+                        write_anat, make_dataset_description)
+import os
+import mne_bids
+from configuration import (subjects, session, bids_root, data_root, derivatives_root,
+                        input_folder)
+from utils.utils import RawPreprocessor, FileNameRetriever, recursive_overwrite
+import glob
+import mne
+from dicom2nifti import convert_directory
+import shutil
+import subprocess
+
+
+# helper functions:
+def recursive_overwrite(src, dest, ignore=None):
+    if os.path.isdir(src):
+        if not os.path.isdir(dest):
+            os.makedirs(dest)
+        files = os.listdir(src)
+        if ignore is not None:
+            ignored = ignore(src, files)
+        else:
+            ignored = set()
+        for f in files:
+            if f not in ignored:
+                recursive_overwrite(os.path.join(src, f), 
+                                    os.path.join(dest, f), 
+                                    ignore)
+    else:
+        shutil.copyfile(src, dest)
+
+
+def convert_dcm_folder(subj):
+    try:
+        anafolder = str(os.path.join(input_folder, subj))
+        folder = str(glob.glob((anafolder + "/1*/100*/100*"), recursive=True)[0])
+        convert_directory(folder, anafolder, compression=True, reorient=True)
+    except Exception as e:
+        print(f"Converting DICOM to nifti failed: {e}")
+
+
+
+# 1. Add derivatives folder structure + bids_root directory, if it doesn't exist 
+
+for subj in subjects:
+    fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
+    fsrc = os.path.join(fbase, "source_model")
+    fanat = os. path.join(fbase, "freesurfer")
+    fprep = os.path.join(fbase, "preprocessing")
+    ffwd = os.path.join(fbase, "forward_model")
+    finv = os.path.join(fbase, "inverse_model")
+    spikes = os.path.join(fbase, "spikes")
+    freq = os.path.join(fbase, "frequency_distribution")
+    fMNE = os.path.join(freq, "MNE")
+    conn = os.path.join(fbase, "connectivity")
+    ftrans = os.path.join(fbase, "trans_files")
+    freport = os.path.join(fbase, "report")
+    
+    folder_list = [fbase, fsrc, fanat, fprep, ffwd, finv, spikes, freq, fMNE, conn, ftrans, freport]
+
+    for fld in folder_list:
+        if not os.path.exists(fld):
+            os.makedirs(fld, exist_ok=True)
+
+
+# 2. BIDSify data
+
+prepper = RawPreprocessor()
+
+for subj in subjects:
+    data_dir = os.path.join(data_root, subj)
+    raws = glob.glob(input_folder + "/" + subj + "*.fif")
+    print(f"raw files found were: {raws}")
+    bids_path = BIDSPath(subject=subj, session=session, task="resting", root=bids_root, processing=None)
+    fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
+    fmeg = os.path.join(fbase, "meg")
+
+
+
+# The following processing flags are added:
+# - .fif                                --> None
+# - tsss-trans.fif without event-file   --> tsssTrans
+# - tsss-trans.fif + event-file         --> tsssTransEve
+
+    for run, rawfile in enumerate(raws):
+        run +=1
+        if "tsss" in rawfile:
+            # --> search for matching eventfile and combine
+            eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+            if not os.path.isfile(eve_name):
+                eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+            if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+                print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
+                raw = mne.io.read_raw(rawfile, preload=True)
+                event_file, event_dict = prepper.transform_eventfile(eve_name)
+                raw.add_events(event_file)
+                bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
+                raw.save(rawfile, overwrite=True)
+                raw = mne.io.read_raw(rawfile, preload=False)
+                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
+            else: # tsss-file, but no events
+                print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
+                raw = mne.io.read_raw(rawfile, preload=False)
+                bids_path.update(root=derivatives_root, processing="tsssTrans")
+                write_raw_bids(raw, bids_path, overwrite=True)
+        else: # unprocessed raw file
+            print("\n\nFound raw file {rawfile}, saving in BIDS base.\n\n")
+            bids_path.update(root=bids_root, processing=None)
+            # write raw BIDS, as below
+            raw = mne.io.read_raw(rawfile)
+            write_raw_bids(raw, bids_path, overwrite=True)
+    
+
+# 3. Anatomy --> Convert DICOM folder to nifti + save
+for subj in subjects:    
+    try:
+        convert_dcm_folder(subj)
+    except Exception as e:
+        print(e)
+
+    anafolder = os.path.join(input_folder, subj)
+    niis = glob.glob(anafolder + "/*.nii*")
+
+    try:
+        for n in niis:
+            bids_path.update(root=bids_root)
+            write_anat(n, bids_path=bids_path, overwrite=True)
+    except Exception as e:
+        print(e)
+
+
+# 3. DataSet description
+make_dataset_description(bids_root, name="CDK Epilepsy Dataset", data_license="closed", 
+                            authors="Rudi Kreidenhuber", overwrite=True)
+
+
+# 4. Copy Vizualizer, fsaverage(_sym) and report generator + dependent files to report directory for later independent use
+for subj in subjects:
+    fbase = os.path.join(bids_root, "derivatives", "sub-" + subj)
+    freport = os.path.join(fbase, "report")
+    fanat = os. path.join(fbase, "freesurfer")
+    fs_avg = os.path.join(input_folder, "extras", "fsaverage")
+    fs_avg_sym = os.path.join(input_folder, "extras", "fsaverage_sym")
+    disclaimer = os.path.join(input_folder, "extras", "MEG_disclaimer.png")
+    title = os.path.join(input_folder, "extras", "MEG_title.png")
+    report_files = [disclaimer, title]
+    ana_files = [fs_avg, fs_avg_sym]
+    # copy disclaimer and title for report
+    for f in report_files:
+        try:
+            fi = f.split("/")[-1]
+            target = os.path.join(freport, fi)
+            shutil.copyfile(f, target)
+        except Exception as e:
+            print(e)
+    #copy fsaverage + fsaverage_sym to local subjects anatomy folder
+    for f in ana_files:
+        try:
+            base = f.split("/")[-1]
+            dest = os.path.join(fanat, base)
+            recursive_overwrite(f, dest)
+        except Exception as e:
+            print(e)
+    # copy visualizer
+    visualizer = os.path.abspath(os.path.relpath("./10_visualizer.ipynb"))
+    reporter = os.path.abspath(os.path.relpath("./report.ipynb"))
+    try:
+        fi = visualizer.split("/")[-1]
+        target = os.path.join(freport, fi)
+        shutil.copyfile(visualizer, target)
+    except Exception as e:
+        print(e)
+

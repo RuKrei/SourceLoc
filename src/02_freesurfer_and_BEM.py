@@ -6,7 +6,7 @@ from genericpath import isdir
 from os.path import isfile
 from nipype.interfaces.freesurfer import ReconAll
 import os
-from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data_root, do_hippocampus_segmentation,
+from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, do_hippocampus_segmentation,
                             BEM_single_shell, BEM_three_layer, spacings, volume_label, single_volume, derivatives_root,
                             subjects_dir)
 import glob
@@ -17,9 +17,6 @@ import subprocess
 
 
 fnr = FileNameRetriever(derivatives_root)
-
-def run_shell_command(command):
-    subprocess.run(command, shell=True, capture_output=True, check=True)
 
 
 # 1. freesurfer
@@ -52,7 +49,7 @@ if do_anatomy == True:
                 try:
                     print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
                     hipposeg = "segmentHA_T1.sh " + subj
-                    run_shell_command(hipposeg)
+                    subprocess.run(hipposeg, shell=True, capture_output=True, check=True)
                 except Exception as e:
                     print(f"Something went wrong with the hippocampal segmentation! --> {e}")
             else:
