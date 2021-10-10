@@ -2,6 +2,13 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--sub", action="store", type=str, required=True)
+args = parser.parse_args()
+
+subj = args.sub
 
 
 """

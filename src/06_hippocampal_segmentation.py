@@ -1,6 +1,15 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
+
+"""
+This is going to be obsolete in the next version, as fs-segmentation including
+hippocampus segmentation is going to be containerized. This makes the whole 
+matlab runtime thing less annoyin and these files will already exist.
+"""
+
+
+
 from nipype.interfaces.freesurfer import ReconAll, FSCommand
 import os
 from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data_root, 
@@ -8,6 +17,13 @@ from configuration import (subjects, openmp, n_jobs, do_anatomy, bids_root, data
 import glob
 from utils.utils import FileNameRetriever
 import subprocess
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--sub", action="store", type=str, required=True)
+args = parser.parse_args()
+
+subjects = args.sub
 
 
 def run_shell_command(command):
@@ -16,18 +32,17 @@ def run_shell_command(command):
 fnr = FileNameRetriever(derivatives_root)
 
 if do_hippocampus_segmentation:     ### Has to be tested yet!!!
-    for subj in subjects:  
-        subsubj = "sub-" + subj
-        this_subjects_dir = fnr.get_filename(subsubj, "subjects_dir")
-        freesurfered = os.path.join(this_subjects_dir, subsubj)
-        hippofile = os.path.join(freesurfered, "mri", "lh.hippoSfVolumes-T1.v21.txt")
-        print(f"###########\nHippofile: {hippofile}")
-        if not os.path.isfile(hippofile):
-            print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
-            hipposeg = "segmentHA_T1.sh " + subsubj + " " + this_subjects_dir
-            run_shell_command(hipposeg)
-        else:
-            print(f"Omitting hippocampal segmentation for subject {subj}, as it already exists")
+    subsubj = "sub-" + subj
+    this_subjects_dir = fnr.get_filename(subsubj, "subjects_dir")
+    freesurfered = os.path.join(this_subjects_dir, subsubj)
+    hippofile = os.path.join(freesurfered, "mri", "lh.hippoSfVolumes-T1.v21.txt")
+    print(f"###########\nHippofile: {hippofile}")
+    if not os.path.isfile(hippofile):
+        print(f"Now running hippocampal segmentation for subject: {subj}\nThis might take some time")
+        hipposeg = "segmentHA_T1.sh " + subsubj + " " + this_subjects_dir
+        run_shell_command(hipposeg)
+    else:
+        print(f"Omitting hippocampal segmentation for subject {subj}, as it already exists")
 
 
 

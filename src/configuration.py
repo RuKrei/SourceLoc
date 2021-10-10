@@ -6,21 +6,14 @@
 
 import os
 
-subjects =  ["GV21071998"]  
-# next: ["TP03011978"]
-                            # ["RS10021988"]
-                            # ["ARM23082007"]           
-                            # ["GM30091987"]        
-                            # ["AD14071990", "PW17081978"]   # "HA11041987",  #["KF28091994"]  # ["FT05042011"] 
-                            #["LL23052000"]  # ["BF28011991"] #  ["MKE03101965"]  
-                            # ["johndoe"] # ["MA17011989"]   # ["PP05071984"] #  # "*" means every subject in data_root
 
 subjects_dir = os.environ.get("SUBJECTS_DIR")
 
 #where am I?
-beast =  True
+beast =  False
 candice = False
 h_beast = False
+katie = True
 
 # BIDS inputs
 if beast:
@@ -35,20 +28,23 @@ if candice:
 if h_beast:
     bids_root = "/media/idrael/Data/SourceLocTest/BIDSTestData"         #h_beast
     data_root = "/media/idrael/Data/SourceLocTest/input_folder"         #h_beast
-    subjects_dir = "/media/idrael/Data/Playground/anat"                 #h_beast
+    subjects_dir = "/media/idrael/Data/Playground/anat"    
+
+if katie:
+    bids_root = "/home/idrael/playground/SourceLocTest/BIDSTestData"         #h_beast
+    data_root = "/home/idrael/playground/SourceLocTest/input_folder"         #h_beast
+    subjects_dir = "/usr/local/freesurfer/7-dev/subjects" 
+    input_folder = "/home/idrael/playground/SourceLocTest/input_folder"               #h_beast
 
 session = "resting"
 derivatives_root = os.path.join(bids_root, "derivatives")
 extras_dir = os.path.join(data_root, "extras")
 
-if subjects == ["*"]:
-    subjects = os.listdir(data_root)
-
 # Processing
 if beast:
     openmp = 35
     n_jobs = 35
-if candice or h_beast:
+else:
     openmp = 4
     n_jobs = 4
 
@@ -68,7 +64,7 @@ s_freq = 300
 n_grad = 1          # number of Vectors to apply for gradiometers
 n_mag = 1           # number of Vectors to apply for magnetometers
 n_eeg = 1           # number of Vectors to apply for eeg
-ecg_channel=None
+ecg_channel="ECG003"
 do_ecg_correction_ssp = True
 do_ecg_correction_ica = False
 do_ecg_correction_regression = False

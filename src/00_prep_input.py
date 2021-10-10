@@ -14,8 +14,16 @@ DICOM-directories are converted to .nii.gz before moving
 
 import os
 import shutil
-from configuration import input_folder, data_root, subjects
+from configuration import input_folder, data_root
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--sub", action="store", type=str, required=True)
+args = parser.parse_args()
+
+s = args.sub
+
+print(f"\n\n\n\nRunning for subject: {s}\n\n\n\n")
 
 # helper functions
 def recursive_overwrite(src, dest, ignore=None):
@@ -36,7 +44,7 @@ def recursive_overwrite(src, dest, ignore=None):
         shutil.copyfile(src, dest)
 
 
-for s in subjects:
+if __name__ == '__main__':
     # define target directory
     target = os.path.join(data_root, s)
     print(f"Target-directory --> {target}")

@@ -13,8 +13,16 @@ import pdb
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from configuration import (subjects, subjects_dir, n_jobs, derivatives_root, extras_dir, freq_bands, session)
+from configuration import (subjects_dir, n_jobs, derivatives_root, extras_dir, freq_bands, session)
 from utils.utils import FileNameRetriever
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--sub", action="store", type=str, required=True)
+args = parser.parse_args()
+
+subj = args.sub
+
 
 mne.viz.set_3d_backend("pyvista")
 #matplotlib.rcParams["figure.facecolor"] = "white"
@@ -153,7 +161,7 @@ def plot_ECD_table(T1_imgs=None, drei_D_imgs=None, event='GR_1'):
 
 
 
-for subj in subjects:
+def main():
     subsubj = "sub-" + subj
     meg_folder = os.path.join(derivatives_root, subsubj, "ses-resting", "meg")
     report_folder = fnr.get_filename(subsubj, "report")
@@ -379,11 +387,16 @@ for subj in subjects:
 
 
 
+if __name__ == '__main__':
+    main()
+
+
+
+
 """
 To do:
-postprocessor in order to append custom pics etc.
+
 explain in report why something is analysed + clinical relevance
     i.e. unilateral focal slowing in MEG 95-100% chance of ipsilateral seizure onset...
     add relevant literature
-add disclaimer + title file to report dir (in 01_create_DS_and_folders)
 """
