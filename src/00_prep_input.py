@@ -18,10 +18,13 @@ from configuration import input_folder, data_root
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--sub", action="store", type=str, required=True)
+parser.add_argument("--sub", action="store", type=str, required=False)
 args = parser.parse_args()
 
 s = args.sub
+
+if not s:
+    s = os.listdir(input_folder)
 
 print(f"\n\n\n\nRunning for subject: {s}\n\n\n\n")
 

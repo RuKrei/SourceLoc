@@ -13,7 +13,8 @@ subjects_dir = os.environ.get("SUBJECTS_DIR")
 beast =  False
 candice = False
 h_beast = False
-katie = True
+katie = False
+win11 = True
 
 # BIDS inputs
 if beast:
@@ -31,10 +32,15 @@ if h_beast:
     subjects_dir = "/media/idrael/Data/Playground/anat"    
 
 if katie:
-    bids_root = "/home/idrael/playground/SourceLocTest/BIDSTestData"         #h_beast
-    data_root = "/home/idrael/playground/SourceLocTest/input_folder"         #h_beast
+    bids_root = "/home/idrael/playground/SourceLocTest/BIDSTestData"
+    data_root = "/home/idrael/playground/SourceLocTest/input_folder"
     subjects_dir = "/usr/local/freesurfer/7-dev/subjects" 
-    input_folder = "/home/idrael/playground/SourceLocTest/input_folder"               #h_beast
+    input_folder = "/home/idrael/playground/SourceLocTest/input_folder"
+
+if win11:
+    bids_root = "./BIDS"
+    data_root = "./templates"
+    input_folder = "./input"
 
 session = "resting"
 derivatives_root = os.path.join(bids_root, "derivatives")
