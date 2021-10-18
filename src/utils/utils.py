@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import shutil
+import subprocess
 
 
 class FileNameRetriever():
@@ -274,3 +275,7 @@ def recursive_overwrite(src, dest, ignore=None):
                                     ignore)
     else:
         shutil.copyfile(src, dest)
+
+def run_shell_command(command):
+    subprocess.run(command, shell=True, 
+                   capture_output=True, check=True)
