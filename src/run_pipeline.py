@@ -15,6 +15,7 @@ from mne_bids import make_dataset_description, \
                         BIDSPath, write_anat, write_raw_bids
 from utils import utils as u
 import platform
+from nipype.interfaces.freesurfer import ReconAll
 
 
 # configuration
@@ -23,8 +24,10 @@ extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
 input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
 openmp = n_jobs = 4
 splitter = "\\" if platform.system().lower().startswith("win") else "/"
-
-
+FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
+if FS_SUBJECTS_DIR == None:
+    print(f"It seems freesurfer is not properly set up on your computer")
+    FS_SUBJECTS_DIR = "\\\\wsl.localhost\\Ubuntu-20.04\\usr\\local\\freesurfer\\7-dev\\subjects"
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", action="store", 
@@ -38,6 +41,17 @@ def main():
                         help="Use --fsonly true if you only want to do a freesurfer segmentation")      # do only freesurfer segmentation
     parser.add_argument("--openmp", action="store", type=str, required=False, 
                         help="Specify how many jobs/ processor cores to use")
+    parser.add_argument("--srcspacing", action="store", type=str, required=False, 
+                        help="Source spacing: \
+                            -defaults to ico4 --> 2562 Source points \
+                            || other options: \
+                            oct5 --> 1026 Source points \
+                            || oct6 --> 4098 Source points \
+                            || ico5 --> 10242 Source points")
+    #parser.add_argument("--openmp", action="store", type=str, required=False, 
+    #                    help="Specify how many jobs/ processor cores to use")
+    #parser.add_argument("--openmp", action="store", type=str, required=False, 
+    #                    help="Specify how many jobs/ processor cores to use")
     args = parser.parse_args()  
 
 # define subject
@@ -53,10 +67,22 @@ def main():
     if args.openmp:
         openmp = args.openmp
         print(f"Using {openmp} processor cores/ jobs.")
+    
+    if not args.srcspacing:
+        spacing = "ico4"
+    else:
+        spacing = args.srcspacing
+        if spacing in ["ico4", "oct5", "oct6", "ico5"]:
+            print(f"Desired source spacing is {spacing}")
+        else:
+            print('The desired spacing isn\'t allowed, typo?\n \
+                Options are: "ico4", "oct5", "oct6", "ico5"')
+            raise Exception
+
 
 # make sure we have an MRI, convert, if necessary
     anafolder = opj(input_folder, subject)
-    nii = glob.glob(opj(input_folder, subject, "*.nii.gz"))
+    nii = glob.glob(opj(input_folder, subject, "*.nii*"))
     if os.path.isdir(anafolder) and nii == []:
         folder = str(glob.glob((anafolder + '/1*/100*/100*'), recursive=True)[0])
         try:
@@ -68,15 +94,15 @@ def main():
             print("\nMRI was converted to .nii.gz\n")
         except Exception as e:
             print(f"Something went wrong trying to convert the MRI to nifti: {e}")
-    nii = glob.glob(opj(input_folder, subject, "*.nii.gz"))
+    nii = glob.glob(opj(input_folder, subject, "*.nii*"))
     if nii == []:
         print("No anatomical data found, did you provide an MRI?")
     else:
-        print(f"\nMRI already is in .nii.gz-Format: {nii}\nDoing nothing...\n")
+        print(f"\nMRI already is in nifti-Format: {nii}\nDoing nothing...\n")
 
 # Check if only freesurfer segmentation was desired and comply, if true
 # Naturally, this only works with a freesurfer environment 
-    if args.fsonly.lower() == "true":
+    if args.fsonly and args.fsonly.lower() == "true":
         command = f"recon-all -i {nii[0]} -s {subject} -openmp {openmp} - all"
         u.run_shell_command(command)
     
@@ -181,6 +207,76 @@ def main():
                             authors="Rudi Kreidenhuber", 
                             overwrite=True)
 
+# Adjust subject variable, so we comply with BIDS convention
+    if not subject.startswith("sub-"):
+        subject = "sub-" + subject
+
+# Freesurfer segmentation - nipype makes this very convenient
+    fs_folder = opj(FS_SUBJECTS_DIR, subject)
+    if os.path.isdir(fs_folder):
+        print(f"A freesurfer segmentation for {subject} exists at:\n \
+                {fs_folder}")
+        
+        
+    else:
+        anafolder = opj(bids_root, subject, "ses-resting", "anat")
+        print(f"anafolder {anafolder}")
+        nii = glob.glob(anafolder + splitter +  "*.nii*")[0]
+        reconall = ReconAll()
+        reconall.inputs.subject_id = subject
+        reconall.inputs.T1_files = nii
+        reconall.inputs.directive = 'all'
+        reconall.inputs.subjects_dir = FS_SUBJECTS_DIR
+        reconall.inputs.openmp = openmp
+        reconall.inputs.flags = "-3T"
+        reconall.run()
+    this_subjects_dir = opj(fanat, subject)
+    if not os.path.isdir(this_subjects_dir):
+        u.recursive_overwrite(fs_folder, this_subjects_dir)
+    else:
+        print(f"Freesurfer segmentation already exists at {this_subjects_dir} \
+                --> doing nothing...")
+    
+# Head model --> fails without freesurfer
+    if not os.path.isfile(opj(this_subjects_dir, "bem", subject + "-head.fif")):
+        try:    
+            mne.bem.make_watershed_bem(subject=subject, subjects_dir=this_subjects_dir, overwrite=True)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed to make watershed BEM for {subject}\n--> {e}")
+
+# Cortex source space
+    srcfilename = opj(fsrc, subject + "-" + spacing + "-src.fif")
+    if not os.path.isfile(srcfilename):
+        try:
+            src = mne.setup_source_space(subject, spacing = spacing, 
+                                            subjects_dir = fanat, 
+                                            n_jobs=n_jobs, 
+                                            verbose=True)
+            mne.write_source_spaces(srcfilename, src, overwrite=True, verbose=True)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed to setup source space with spacing {spacing} \
+                    for {subject} --> {e}")
+
+
+# Volume source space
+    srcfilename = opj(fsrc, subject  + "-vol-src.fif")
+    if not os.path.isfile(srcfilename):
+        try:    
+            src_vol = mne.setup_volume_source_space(subject, pos=3.0, 
+                                            subjects_dir = fanat, 
+                                            verbose=True)
+            mne.write_source_spaces(srcfilename, src_vol, overwrite=True, verbose=True)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed to setup Volume source space for {subject} --> {e}")
 
 
 
@@ -194,7 +290,6 @@ if __name__ == '__main__':
 
 """
 To do:
-    ignore MRI, if freesurfer subjetc already exists
-    mri-only option
+    update auto-recon-all to also take care of head-model (--> watershed uses freesurfer)
     
 """
