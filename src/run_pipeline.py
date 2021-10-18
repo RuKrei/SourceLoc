@@ -10,7 +10,9 @@ import argparse
 from os.path import join as opj
 from dicom2nifti import convert_directory
 import glob
-from mne_bids import make_dataset_description, BIDSPath, write_anat
+import mne
+from mne_bids import make_dataset_description, \
+                        BIDSPath, write_anat, write_raw_bids
 from utils import utils as u
 import platform
 
@@ -19,18 +21,23 @@ import platform
 bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
 extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
 input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
-open_mp = 4
-n_jobs = 4
+openmp = n_jobs = 4
 splitter = "\\" if platform.system().lower().startswith("win") else "/"
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--subject", action="store", type=str, required=False)
-    parser.add_argument("--bidsroot", action="store", type=str, required=False)
-    parser.add_argument("--inputfolder", action="store", type=str, required=False)
-    parser.add_argument("--fsonly", action="store", type=str, required=False)      # do only freesurfer segmentation
-    
+    parser.add_argument("--subject", action="store", 
+                        type=str, required=False,
+                        help="Name of the Patient/ Subject to process")
+    parser.add_argument("--bidsroot", action="store", type=str, required=False, 
+                        help="Specify BIDS root directory to use")
+    parser.add_argument("--inputfolder", action="store", type=str, required=False, 
+                        help="Specify a different data input folder")
+    parser.add_argument("--fsonly", action="store", type=str, required=False, 
+                        help="Use --fsonly true if you only want to do a freesurfer segmentation")      # do only freesurfer segmentation
+    parser.add_argument("--openmp", action="store", type=str, required=False, 
+                        help="Specify how many jobs/ processor cores to use")
     args = parser.parse_args()  
 
 # define subject
@@ -41,6 +48,11 @@ def main():
         subject = input()
     
     print(f"Subject = {subject}")
+    
+# additional arguments
+    if args.openmp:
+        openmp = args.openmp
+        print(f"Using {openmp} processor cores/ jobs.")
 
 # make sure we have an MRI, convert, if necessary
     anafolder = opj(input_folder, subject)
@@ -62,6 +74,12 @@ def main():
     else:
         print(f"\nMRI already is in .nii.gz-Format: {nii}\nDoing nothing...\n")
 
+# Check if only freesurfer segmentation was desired and comply, if true
+# Naturally, this only works with a freesurfer environment 
+    if args.fsonly.lower() == "true":
+        command = f"recon-all -i {nii[0]} -s {subject} -openmp {openmp} - all"
+        u.run_shell_command(command)
+    
 # create folder structure and copy 
     fbase = opj(bids_root, "derivatives", "sub-" + subject)
     fsrc = opj(fbase, "source_model")
@@ -118,7 +136,46 @@ def main():
         print(e)
 
     # MEG
-    make_dataset_description(bids_root, 
+    # The following processing flags are added:
+    # - .fif                                --> None
+    # - tsss-trans.fif without event-file   --> tsssTrans
+    # - tsss-trans.fif + event-file         --> tsssTransEve
+    prepper = u.RawPreprocessor()
+    # files are processed (Spike-Selection, Maxgfilter), so they should not 
+    # be stored at BIDS-root anymore
+    derivatives_root = opj(bids_root, "derivatives")  
+    for run, rawfile in enumerate(raws):
+        run +=1
+        if "tsss" in rawfile:
+            # --> search for matching eventfile and combine
+            eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+            if not os.path.isfile(eve_name):
+                eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+            if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+                print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
+                raw = mne.io.read_raw(rawfile, preload=True)
+                event_file, event_dict = prepper.transform_eventfile(eve_name)
+                raw.add_events(event_file)
+                bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
+                raw.save(rawfile, overwrite=True)
+                raw = mne.io.read_raw(rawfile, preload=False)
+                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
+            else: # tsss-file, but no events
+                print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
+                raw = mne.io.read_raw(rawfile, preload=False)
+                bids_path.update(root=derivatives_root, processing="tsssTrans")
+                write_raw_bids(raw, bids_path, overwrite=True)
+        else: # unprocessed raw file
+            print("\n\nFound raw file {rawfile}, saving in BIDS base.\n\n")
+            bids_path.update(root=bids_root, processing=None)
+            # write raw BIDS, as below
+            raw = mne.io.read_raw(rawfile)
+            write_raw_bids(raw, bids_path, overwrite=True)
+    
+    # Dataset
+    the_roots = [bids_root, derivatives_root]
+    for r in the_roots:
+        make_dataset_description(r, 
                             name="CDK Epilepsy Dataset", 
                             data_license="closed", 
                             authors="Rudi Kreidenhuber", 
