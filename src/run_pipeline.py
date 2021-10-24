@@ -12,19 +12,37 @@ from dicom2nifti import convert_directory
 import glob
 import mne
 from mne_bids import make_dataset_description, \
-                        BIDSPath, write_anat, write_raw_bids
+                        BIDSPath, write_anat, write_raw_bids, \
+                        read_raw_bids
 from utils import utils as u
 import platform
 from nipype.interfaces.freesurfer import ReconAll
 
 
 # configuration
-bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
-extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
-input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
-openmp = n_jobs = 4
+#bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
+#extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
+#input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
+
+bids_root = "/home/idrael/playground/BIDS_root"
+extras_directory = "/home/idrael/playground/extras"
+input_folder = "/home/idrael/playground/input_folder"
+
+openmp = n_jobs = 8
 splitter = "\\" if platform.system().lower().startswith("win") else "/"
 FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
+# Filter and resample
+l_freq: int = 1, 
+h_freq: int = 70, 
+fir_design = "firwin"
+s_freq: int = 300
+# ECG artifact correction
+ecg_channel = "ECG003"
+n_grad: int =1
+n_mag: int = 1
+n_eeg: int = 1
+
+
 if FS_SUBJECTS_DIR == None:
     print(f"It seems freesurfer is not properly set up on your computer")
     FS_SUBJECTS_DIR = "\\\\wsl.localhost\\Ubuntu-20.04\\usr\\local\\freesurfer\\7-dev\\subjects"
@@ -278,6 +296,131 @@ def main():
             print("#"*30)
             print(f"Failed to setup Volume source space for {subject} --> {e}")
 
+# .fif data preparations
+    # load all files
+    bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
+                        datatype="meg", 
+                        session="resting", 
+                        task="resting", 
+                        run="01",
+                        root=derivatives_root,
+                        suffix="meg",
+                        extension="fif") 
+    bids_derivatives = bids_derivatives.update(processing="tsssTransEve")
+    all_raws = bids_derivatives.match() 
+    print(f"all_raws according to bids: {all_raws}")
+    try:
+        raw = read_raw_bids(bids_derivatives)
+    except Exception as e:
+        print(f"Couldn't load BIDS fif with events: {e}")
+        bids_derivatives = bids_derivatives.update(processing="tsssTrans")
+        all_raws = bids_derivatives.match() 
+        try:
+            raw = read_raw_bids(bids_derivatives)
+        except Exception as e:
+            print(f"Couldn't load any BIDS fif: {e}")
+
+    if all_raws == []:
+        meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
+        concat_fif = meg_dir + splitter + "*Concat*.fif"
+        all_raws = glob.glob(concat_fif)
+        if all_raws == []:
+            tsssTrans_fif = meg_dir + splitter + "*tsssTrans*.fif"
+            all_raws = glob.glob(tsssTrans_fif)
+        print(f"\n\nThe following files are being processed: {all_raws}\n\n")
+    
+    # Check, if this has already been done
+    meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
+    eve_fif = meg_dir + splitter + "*tsssTransEve_*.fif"
+    eve_fif = glob.glob(eve_fif)
+    noeve_fif = meg_dir + splitter + "*tsssTrans_*.fif"
+    noeve_fif = glob.glob(noeve_fif)   
+    if (eve_fif == [] and noeve_fif == []):
+        # concatenate raws, if there is more than one - because why not.
+        if (len(all_raws) > 1):
+            try:
+                raws = dict()
+                for num, rawfile in enumerate(all_raws):
+                    raws[num] = mne.io.read_raw(rawfile)
+                raw = mne.concatenate_raws(list(raws.values()))
+                print("Rawfiles have been concatenated....")
+                bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
+                                datatype="meg", 
+                                session="resting", 
+                                task="resting", 
+                                root=derivatives_root, 
+                                processing="tsssTransEveConcat", 
+                                suffix="meg")
+                write_raw_bids(raw, bids_derivatives, overwrite=True)
+
+            except Exception as e:
+                print(f"Failed trying to concatenate multiple raw files --> {e}")
+                print("Loading only first raw file!")
+                raw = mne.io.read_raw(all_raws[0])
+        else:     
+        # raw = read_raw_bids(bids_derivatives)   # this fails again, using bare MNE to load data file
+            if not raw:
+                raw = mne.io.read_raw(all_raws[0])
+
+        # filter
+        #raw = prepper.filter_raw(raw, l_freq=l_freq, h_freq=h_freq, n_jobs=n_jobs)
+        # resample
+        print(f"Resample to {s_freq}")
+        print(f"Original sampling frequency was: {raw.info['sfreq']}")
+        raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+        # ECG artifacts
+        # It's smarter to supervise this step (--> look at the topomaps!)
+        try:
+            ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
+                                                              n_eeg=n_eeg, reject=None)
+            # lets not do this now......
+            raw.add_proj(ecg_projs, remove_existing=False)
+            #raw.apply_proj(ecg_projs, verbose=None) # don't do this in the early stages - see documentation
+            fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
+            savename = os.path.join(fprep, "ECG_projs_Topomap.png")
+            fig.savefig(savename)
+        except Exception as e:
+            print(e)
+            print("ECG - Atrifact correction failed!")
+        #EOG artifacts    
+            ## It's a bad idea to do this in an automated step
+            #try:
+            #    eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
+            #    #eog_evoked.apply_baseline((None, None))
+            #    eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
+            #                                                n_jobs=n_jobs, reject=None)
+            #    raw.add_proj(eog_projs, remove_existing=False) # .apply_proj() --> don't do this in the early stages - see documentation
+            #    figs = eog_evoked.plot_joint(show=False)
+            #    for idx, fig in enumerate(figs):
+            #        savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")
+            #        fig.savefig(savename)
+            #except Exception as e:
+            #    print(e)
+            #    print("EOG - Atrifact correction failed!")
+        # save - if events have been found
+        events, event_ids = mne.events_from_annotations(raw)
+
+        bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
+                                datatype="meg", 
+                                session="resting", 
+                                task="resting", 
+                                root=derivatives_root, 
+                                processing="tsssTransEvePreproc", 
+                                suffix="meg")  
+        if len(events) > 0:
+            raw_temp = os.path.join(fprep, "temp.fif")
+            raw.save(raw_temp, overwrite=True)
+            raw = mne.io.read_raw(raw_temp, preload=False)                    
+            write_raw_bids(raw, bids_derivatives, overwrite=True)
+        else:
+        # save - if no events
+            raw_temp = os.path.join(fprep, "temp.fif")
+            raw.save(raw_temp, overwrite=True)
+            bids_derivatives.update(processing="tsssTransNoEvePreproc", run=run)   
+            raw = mne.io.read_raw(raw_temp, preload=False)                    
+            write_raw_bids(raw, bids_derivatives, overwrite=True)
+    else:
+        print("Omitting preprocessing steps, as preprocessed file has been found.")
 
 
 
@@ -291,5 +434,7 @@ if __name__ == '__main__':
 """
 To do:
     update auto-recon-all to also take care of head-model (--> watershed uses freesurfer)
+    
+    resample and concatenate at the beginning of the pipeline
     
 """

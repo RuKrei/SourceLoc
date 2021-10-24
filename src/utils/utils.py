@@ -204,12 +204,13 @@ class RawPreprocessor():
             event_dict[key] = val
         return new_eve_file, event_dict
     
-    def filter_raw(self, raw, l_freq=1, h_freq=70, fir_design="firwin", n_jobs=1):
+    def filter_raw(self, raw, l_freq, h_freq, n_jobs=1):
         raw.load_data()
-        raw = raw.filter(l_freq=l_freq, h_freq=h_freq, fir_design=fir_design)
+        raw = raw.filter(l_freq=l_freq, h_freq=h_freq, 
+                        n_jobs=1, fir_design="firwin2")
         return raw
     
-    def resample_raw(self, raw, s_freq=300):
+    def resample_raw(self, raw, s_freq=300, n_jobs=1):
         raw.resample(s_freq, npad='auto')
         return raw
 
