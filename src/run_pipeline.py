@@ -11,6 +11,7 @@ from os.path import join as opj
 from dicom2nifti import convert_directory
 import glob
 import mne
+from mne.filter import _filter_attenuation
 from mne_bids import make_dataset_description, \
                         BIDSPath, write_anat, write_raw_bids, \
                         read_raw_bids
@@ -422,7 +423,20 @@ def main():
     else:
         print("Omitting preprocessing steps, as preprocessed file has been found.")
 
-
+# Coregistration --> this doesn't work with WSLg
+    transfile = opj(ftrans, subject + "-trans.fif")
+    if os.path.isfile(transfile):
+        print(f"Skipping coregistration, because a transfile ({transfile}) already exists")
+    else:
+        print(f"\n\n\n--> Transfile should be called: {transfile}\n\n\n")
+        try:
+            mne.gui.coregistration(subject=subject, subjects_dir=fanat, inst=bids_derivatives, advanced_rendering=False) # BIDS: inst=raw.filenames[0])
+        except:
+            print("failed with bids_derivatives")
+            rawfile = meg_dir + splitter + "*Preproc*.fif"
+            print(f"Rawfile = {rawfile}")
+            rawfile = glob.glob(rawfile)[0]
+            mne.gui.coregistration(subject=subject, subjects_dir=fanat, inst=rawfile, advanced_rendering=False)
 
 
 
