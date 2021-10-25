@@ -18,8 +18,11 @@ from mne_bids import make_dataset_description, \
 from utils import utils as u
 import platform
 from nipype.interfaces.freesurfer import ReconAll
+import pickle
 
-
+####################################################################
+####################################################################
+####################################################################
 # configuration
 bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
 extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
@@ -42,6 +45,18 @@ ecg_channel = "ECG003"
 n_grad: int =1
 n_mag: int = 1
 n_eeg: int = 1
+
+# Frequency spectrum
+freq_bands = dict(                #the frequency bands of interest for the analysis
+                delta=(1, 4), 
+                theta=(4, 7), 
+                alpha=(8, 12), 
+                beta=(13, 29), 
+                gamma=(30, 80))
+
+####################################################################
+####################################################################
+####################################################################
 
 
 if FS_SUBJECTS_DIR == None:
@@ -189,33 +204,33 @@ def main():
     # files are processed (Spike-Selection, Maxgfilter), so they should not 
     # be stored at BIDS-root anymore
     derivatives_root = opj(bids_root, "derivatives")  
-    for run, rawfile in enumerate(raws):
-        run +=1
-        if "tsss" in rawfile:
-            # --> search for matching eventfile and combine
-            eve_name = rawfile.split(".fif")[0] + "_Events.csv"
-            if not os.path.isfile(eve_name):
-                eve_name = rawfile.split(".fif")[0] + "_Events.txt"
-            if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
-                print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
-                raw = mne.io.read_raw(rawfile, preload=True)
-                event_file, event_dict = prepper.transform_eventfile(eve_name)
-                raw.add_events(event_file)
-                bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
-                raw.save(rawfile, overwrite=True)
-                raw = mne.io.read_raw(rawfile, preload=False)
-                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
-            else: # tsss-file, but no events
-                print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
-                raw = mne.io.read_raw(rawfile, preload=False)
-                bids_path.update(root=derivatives_root, processing="tsssTrans")
-                write_raw_bids(raw, bids_path, overwrite=True)
-        else: # unprocessed raw file
-            print("\n\nFound raw file {rawfile}, saving in BIDS base.\n\n")
-            bids_path.update(root=bids_root, processing=None)
-            # write raw BIDS, as below
-            raw = mne.io.read_raw(rawfile)
-            write_raw_bids(raw, bids_path, overwrite=True)
+    #for run, rawfile in enumerate(raws):
+    #    run +=1
+    #    if "tsss" in rawfile:
+    #        # --> search for matching eventfile and combine
+    #        eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+    #        if not os.path.isfile(eve_name):
+    #            eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+    #        if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+    #            print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
+    #            raw = mne.io.read_raw(rawfile, preload=True)
+    #            event_file, event_dict = prepper.transform_eventfile(eve_name)
+    #            raw.add_events(event_file)
+    #            bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
+    #            raw.save(rawfile, overwrite=True)
+    #            raw = mne.io.read_raw(rawfile, preload=False)
+    #            write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
+    #        else: # tsss-file, but no events
+    #            print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
+    #            raw = mne.io.read_raw(rawfile, preload=False)
+    #            bids_path.update(root=derivatives_root, processing="tsssTrans")
+    #            write_raw_bids(raw, bids_path, overwrite=True)
+    #    else: # unprocessed raw file
+    #        print("\n\nFound raw file {rawfile}, saving in BIDS base.\n\n")
+    #        bids_path.update(root=bids_root, processing=None)
+    #        # write raw BIDS, as below
+    #        raw = mne.io.read_raw(rawfile)
+    #        write_raw_bids(raw, bids_path, overwrite=True)
     
     # Dataset
     the_roots = [bids_root, derivatives_root]
@@ -320,7 +335,6 @@ def main():
             raw = read_raw_bids(bids_derivatives)
         except Exception as e:
             print(f"Couldn't load any BIDS fif: {e}")
-
     if all_raws == []:
         meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
         concat_fif = meg_dir + splitter + "*Concat*.fif"
@@ -353,7 +367,6 @@ def main():
                                 processing="tsssTransEveConcat", 
                                 suffix="meg")
                 write_raw_bids(raw, bids_derivatives, overwrite=True)
-
             except Exception as e:
                 print(f"Failed trying to concatenate multiple raw files --> {e}")
                 print("Loading only first raw file!")
@@ -362,7 +375,7 @@ def main():
         # raw = read_raw_bids(bids_derivatives)   # this fails again, using bare MNE to load data file
             if not raw:
                 raw = mne.io.read_raw(all_raws[0])
-
+#
         # filter
         #raw = prepper.filter_raw(raw, l_freq=l_freq, h_freq=h_freq, n_jobs=n_jobs)
         # resample
@@ -400,7 +413,6 @@ def main():
             #    print("EOG - Atrifact correction failed!")
         # save - if events have been found
         events, event_ids = mne.events_from_annotations(raw)
-
         bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
                                 datatype="meg", 
                                 session="resting", 
@@ -438,6 +450,104 @@ def main():
             rawfile = glob.glob(rawfile)[0]
             mne.gui.coregistration(subject=subject, subjects_dir=fanat, inst=rawfile, advanced_rendering=False)
 
+# frequency spectrum
+    bem_sol = opj(fsrc, subject + "-3-layer-BEM-sol.fif")
+    fwd_name = opj(fsrc, subject + "-fwd.fif")
+    srcfilename = opj(fsrc, subject + "-" + spacing + "-src.fif")
+    filebase = str(subject) + "_Freqs"
+    all_stcs_filename = (filebase + '-stc-psd-MNE.pkl')
+    all_stcs_filename = opj(freq, all_stcs_filename)
+    sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
+    sensor_psd_filename = opj(freq, sensor_psd_filename)
+    if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):  # so this should run only on the first file..
+        raw.load_data()
+        if os.path.isfile(fwd_name):
+            fwd = mne.read_forward_solution(fwd_name)
+        else:    
+            fwd = mne.make_forward_solution(raw.info, src=srcfilename, bem=bem_sol,
+                                            trans=transfile, 
+                                            meg=True, eeg=False, mindist=0.2, 
+                                            ignore_ref=False, 
+                                            n_jobs=n_jobs, verbose=True)
+            mne.write_forward_solution(fwd_name, fwd)
+        noise_cov = mne.compute_raw_covariance(raw, method="empirical", n_jobs=n_jobs)
+        inv = mne.minimum_norm.make_inverse_operator(raw.info, forward=fwd, noise_cov=noise_cov, 
+                                            loose="auto", depth=0.8)
+        snr = 3.
+        lambda2 = 1. / snr ** 2
+        stc_psd, sensor_psd = mne.minimum_norm.compute_source_psd(raw, inv, lambda2=lambda2, 
+                                                method='MNE', 
+                                                fmin=1, fmax=45, n_fft=2048, n_jobs=n_jobs, 
+                                                return_sensor=True, verbose=True)
+        pickle.dump(stc_psd, open(all_stcs_filename, "wb"))
+        pickle.dump(sensor_psd, open(sensor_psd_filename, "wb"))
+    else:
+        stc_psd = pickle.load(open(all_stcs_filename, "rb"))
+        sensor_psd = pickle.load(open(sensor_psd_filename, "rb"))
+# Visulisation
+    topos = dict()
+    stcs = dict()
+    topo_norm = sensor_psd.data.sum(axis=1, keepdims=True)
+    stc_norm = stc_psd.sum()
+    for band, limits in freq_bands.items():         # normalize...
+        data = sensor_psd.copy().crop(*limits).data.sum(axis=1, keepdims=True)
+        topos[band] = mne.EvokedArray(100 * data / topo_norm, sensor_psd.info)
+        stcs[band] = 100 * stc_psd.copy().crop(*limits).sum() / stc_norm.data
+    brain = dict()
+    x_hemi_freq = dict()
+    mne.viz.set_3d_backend('pyvista')
+    for band in freq_bands.keys():
+        brain[band] = u.plot_freq_band_dors(stcs[band], band=band, subject=subject, 
+                                                    subjects_dir=fanat,
+                                                    filebase=filebase)
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_dors.png')
+        freqfilename3d = os.path.join(freq, freqfilename3d)
+        image = brain[band].save_image(freqfilename3d)
+        brain_lh, brain_rh = u.plot_freq_band_lat(stcs[band], band=band, subject=subject, 
+                                                    subjects_dir=fanat,
+                                                    filebase=filebase)                                           
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_lh.png')
+        freqfilename3d = os.path.join(freq, freqfilename3d)
+        image = brain_lh.save_image(freqfilename3d)
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_rh.png')
+        freqfilename3d = os.path.join(freq, freqfilename3d)
+        image = brain_rh.save_image(freqfilename3d)
+        brain_lh, brain_rh = u.plot_freq_band_med(stcs[band], band=band, subject=subject, 
+                                                    subjects_dir=fanat,
+                                                    filebase=filebase)                                           
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_lh.png')
+        freqfilename3d = os.path.join(freq, freqfilename3d)
+        image = brain_lh.save_image(freqfilename3d)
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_rh.png')
+        freqfilename3d = os.path.join(freq, freqfilename3d)
+        image = brain_rh.save_image(freqfilename3d)
+# 2. Cross hemisphere comparison
+        # make sure fsaverage_sym exists in local subjects dir:
+        target = os.path.join(fanat, "fsaverage_sym")
+        if not os.path.isdir(target):
+            # try to find it in $SUBJECTS_DIR and copy
+            os_subj_dir = os.environ.get("SUBJECTS_DIR")
+            fs_avg_sym_dir = os.path.join(os_subj_dir, "fsaverage_sym")
+            u.recursive_overwrite(fs_avg_sym_dir, target)
+        mstc = stcs[band].copy()
+        mstc = mne.compute_source_morph(mstc, subject, 'fsaverage_sym',
+                                                    smooth=5,
+                                                    warn=False,
+                                                    subjects_dir=fanat).apply(mstc)
+        morph = mne.compute_source_morph(mstc, 'fsaverage_sym', 'fsaverage_sym',
+                                                    spacing=mstc.vertices, warn=False,
+                                                    subjects_dir=fanat, xhemi=True,
+                                                    verbose='error')
+        stc_xhemi = morph.apply(mstc)
+        diff = mstc - stc_xhemi
+        title = ('blue = RH; ' + subject + ' -Freq-x_hemi- ' + band)
+        x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=fanat, 
+                                size=(1200, 800), time_label=title,
+                                add_data_kwargs=dict(time_label_size=10))
+        freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
+        freqfilename3d = os.path.join(freq, freqfilename3d)
+        image = x_hemi_freq[band].save_image(freqfilename3d)
+        break    
 
 
 

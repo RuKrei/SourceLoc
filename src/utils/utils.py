@@ -214,14 +214,17 @@ class RawPreprocessor():
         raw.resample(s_freq, npad='auto')
         return raw
 
-def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
+def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None, 
+                        filebase=None):
     title = str(filebase) + " " + str(band)
-    brain = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='both',
+    brain = stc_band.plot(subject=subject, subjects_dir=subjects_dir, 
+                        hemi='both', view='dorsal',
                         time_label=title, colormap='inferno', 
                         add_data_kwargs=dict(time_label_size=10),
                         clim=dict(kind='percent', lims=(25, 70, 99)))
     brain.show_view(dict(azimuth=0, elevation=0), roll=0)
     return brain
+
 def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
     title = str(filebase) + " " + str(band)
     brain_lh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='lh',
