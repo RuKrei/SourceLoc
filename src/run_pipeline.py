@@ -21,13 +21,13 @@ from nipype.interfaces.freesurfer import ReconAll
 
 
 # configuration
-#bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
-#extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
-#input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
+bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
+extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
+input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
 
-bids_root = "/home/idrael/playground/BIDS_root"
-extras_directory = "/home/idrael/playground/extras"
-input_folder = "/home/idrael/playground/input_folder"
+#bids_root = "/home/idrael/playground/BIDS_root"
+#extras_directory = "/home/idrael/playground/extras"
+#input_folder = "/home/idrael/playground/input_folder"
 
 openmp = n_jobs = 8
 splitter = "\\" if platform.system().lower().startswith("win") else "/"
