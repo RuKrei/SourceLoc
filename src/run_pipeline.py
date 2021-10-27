@@ -204,33 +204,33 @@ def main():
     # files are processed (Spike-Selection, Maxgfilter), so they should not 
     # be stored at BIDS-root anymore
     derivatives_root = opj(bids_root, "derivatives")  
-    #for run, rawfile in enumerate(raws):
-    #    run +=1
-    #    if "tsss" in rawfile:
-    #        # --> search for matching eventfile and combine
-    #        eve_name = rawfile.split(".fif")[0] + "_Events.csv"
-    #        if not os.path.isfile(eve_name):
-    #            eve_name = rawfile.split(".fif")[0] + "_Events.txt"
-    #        if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
-    #            print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
-    #            raw = mne.io.read_raw(rawfile, preload=True)
-    #            event_file, event_dict = prepper.transform_eventfile(eve_name)
-    #            raw.add_events(event_file)
-    #            bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
-    #            raw.save(rawfile, overwrite=True)
-    #            raw = mne.io.read_raw(rawfile, preload=False)
-    #            write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
-    #        else: # tsss-file, but no events
-    #            print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
-    #            raw = mne.io.read_raw(rawfile, preload=False)
-    #            bids_path.update(root=derivatives_root, processing="tsssTrans")
-    #            write_raw_bids(raw, bids_path, overwrite=True)
-    #    else: # unprocessed raw file
-    #        print("\n\nFound raw file {rawfile}, saving in BIDS base.\n\n")
-    #        bids_path.update(root=bids_root, processing=None)
-    #        # write raw BIDS, as below
-    #        raw = mne.io.read_raw(rawfile)
-    #        write_raw_bids(raw, bids_path, overwrite=True)
+    for run, rawfile in enumerate(raws):
+        run +=1
+        if "tsss" in rawfile:
+            # --> search for matching eventfile and combine
+            eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+            if not os.path.isfile(eve_name):
+                eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+            if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+                print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
+                raw = mne.io.read_raw(rawfile, preload=True)
+                event_file, event_dict = prepper.transform_eventfile(eve_name)
+                raw.add_events(event_file)
+                bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
+                raw.save(rawfile, overwrite=True)
+                raw = mne.io.read_raw(rawfile, preload=False)
+                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
+            else: # tsss-file, but no events
+                print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
+                raw = mne.io.read_raw(rawfile, preload=False)
+                bids_path.update(root=derivatives_root, processing="tsssTrans")
+                write_raw_bids(raw, bids_path, overwrite=True)
+        else: # unprocessed raw file
+            print("\n\nFound raw file {rawfile}, saving in BIDS base.\n\n")
+            bids_path.update(root=bids_root, processing=None)
+            # write raw BIDS, as below
+            raw = mne.io.read_raw(rawfile)
+            write_raw_bids(raw, bids_path, overwrite=True)
     
     # Dataset
     the_roots = [bids_root, derivatives_root]
@@ -281,6 +281,20 @@ def main():
             print("#"*30)
             print(f"Failed to make watershed BEM for {subject}\n--> {e}")
 
+# Volume source space
+    srcfilename = opj(fsrc, subject  + "-vol-src.fif")
+    if not os.path.isfile(srcfilename):
+        try:    
+            src_vol = mne.setup_volume_source_space(subject, pos=3.0, 
+                                            subjects_dir = fanat, 
+                                            verbose=True)
+            mne.write_source_spaces(srcfilename, src_vol, overwrite=True, verbose=True)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed to setup Volume source space for {subject} --> {e}")
+
 # Cortex source space
     srcfilename = opj(fsrc, subject + "-" + spacing + "-src.fif")
     if not os.path.isfile(srcfilename):
@@ -297,23 +311,63 @@ def main():
             print(f"Failed to setup source space with spacing {spacing} \
                     for {subject} --> {e}")
 
-
-# Volume source space
-    srcfilename = opj(fsrc, subject  + "-vol-src.fif")
-    if not os.path.isfile(srcfilename):
-        try:    
-            src_vol = mne.setup_volume_source_space(subject, pos=3.0, 
-                                            subjects_dir = fanat, 
-                                            verbose=True)
-            mne.write_source_spaces(srcfilename, src_vol, overwrite=True, verbose=True)
+# BEM Solutions - single shell
+    bem_save_name = opj(fsrc, subject + "-single-shell-model")
+    if not os.path.isfile(bem_save_name):
+        try:
+            bem = mne.make_bem_model(subject, ico=4, 
+                            conductivity=[0.3],   
+                            subjects_dir=fanat, verbose=True)
+            mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
         except Exception as e:
             print("#"*30)
             print("#"*30)
             print("#"*30)
-            print(f"Failed to setup Volume source space for {subject} --> {e}")
+            print(f"Failed to setup single shell BEM model for {subject} --> {e}")
+    bem_sol_filename = opj(fsrc, subject + "-single-shell-BEM-sol.fif")
+    if not os.path.isfile(bem_sol_filename):
+        try:
+            bem = mne.read_bem_surfaces(bem_save_name)    
+            bem_sol = mne.make_bem_solution(bem)
+            mne.write_bem_solution(bem_sol_filename, bem_sol, overwrite=True)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed to calculate BEM solution (single-shell) for {subject} --> {e}")
+
+
+    # BEM Solutions - 3-layer-BEM
+    bem_save_name = opj(fsrc, subject + "-3-layer-BEM-model.fif")
+    if not os.path.isfile(bem_save_name):
+        try:
+            bem = mne.make_bem_model(subject, ico=4, 
+                            conductivity=[0.3, 0.006, 0.3],   
+                            subjects_dir=fanat, verbose=True)
+            mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed to calculate 3-layer BEM model for {subject} --> {e}")
+    bem_sol_filename = opj(fsrc, subject + "-3-layer-BEM-sol.fif")
+    if not os.path.isfile(bem_sol_filename):
+        try:
+            bem = mne.read_bem_surfaces(bem_save_name)    
+            bem_sol = mne.make_bem_solution(bem)
+            mne.write_bem_solution(bem_sol_filename, bem_sol, overwrite=True)
+        except Exception as e:
+            print("#"*30)
+            print("#"*30)
+            print("#"*30)
+            print(f"Failed to calculate 3-layer BEM solution for {subject} --> {e}")
+            print("This is bad, please look into the freesurfer segmentation...")
+            print("Alternatively, you might be able to run the analysis with a single-shell-head-model (look into the configuration file")
+
 
 # .fif data preparations
     # load all files
+    raw = False
     bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
                         datatype="meg", 
                         session="resting", 
@@ -335,7 +389,7 @@ def main():
             raw = read_raw_bids(bids_derivatives)
         except Exception as e:
             print(f"Couldn't load any BIDS fif: {e}")
-    if all_raws == []:
+    if not raw:
         meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
         concat_fif = meg_dir + splitter + "*Concat*.fif"
         all_raws = glob.glob(concat_fif)
@@ -498,8 +552,7 @@ def main():
     mne.viz.set_3d_backend('pyvista')
     for band in freq_bands.keys():
         brain[band] = u.plot_freq_band_dors(stcs[band], band=band, subject=subject, 
-                                                    subjects_dir=fanat,
-                                                    filebase=filebase)
+                                            subjects_dir=fanat, filebase=filebase)
         freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_dors.png')
         freqfilename3d = os.path.join(freq, freqfilename3d)
         image = brain[band].save_image(freqfilename3d)
@@ -547,7 +600,7 @@ def main():
         freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
         freqfilename3d = os.path.join(freq, freqfilename3d)
         image = x_hemi_freq[band].save_image(freqfilename3d)
-        break    
+  
 
 
 
