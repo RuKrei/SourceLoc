@@ -72,11 +72,15 @@ class RawAnatomyProcessor:
                 print(f"Something went wrong with the hippocampal segmentation! --> {e}")
         else:
             print(f"Omitting hippocampal segmentation for subject {self.subject}, as it already exists")
+    
+    def _run_watershed(self):
+        pass
 
     def run_anatomy_pipeline(self):
         self._dicom_to_nii()
         self._nii_to_freesurfer()
         self._segment_hippocampal_subfields()
+        # self._run_watershed()
       
 
 class HeadModeler:
