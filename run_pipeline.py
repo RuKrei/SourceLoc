@@ -8,16 +8,15 @@ import os
 import shutil
 import argparse
 from os.path import join as opj
-from dicom2nifti import convert_directory
 import glob
 import mne
 from mne.filter import _filter_attenuation
 from mne_bids import make_dataset_description, \
                         BIDSPath, write_anat, write_raw_bids, \
                         read_raw_bids
-from utils import utils as u
+from src.utils import utils as u
+from src import Anatomist
 import platform
-from nipype.interfaces.freesurfer import ReconAll
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,17 +26,16 @@ import numpy as np
 ####################################################################
 ####################################################################
 # configuration
-bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
-extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
-input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
+#bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
+#extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
+#input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
 
-#bids_root = "/home/idrael/playground/BIDS_root"
-#extras_directory = "/home/idrael/playground/extras"
-#input_folder = "/home/idrael/playground/input_folder"
+bids_root = "/home/idrael/playground/BIDS_root"
+extras_directory = "/home/idrael/playground/extras"
+input_folder = "/home/idrael/playground/input_folder"
 
 openmp = n_jobs = 8
-splitter = "\\" if platform.system().lower().startswith("win") else "/"
-FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
+
 # Filter and resample
 l_freq: int = 1, 
 h_freq: int = 70, 
@@ -77,16 +75,20 @@ dip_times = {   'min20ms':  (-0.025,-0.020),            # Time points in Milisec
 ####################################################################
 
 
-if FS_SUBJECTS_DIR == None:
-    print(f"It seems freesurfer is not properly set up on your computer")
-    FS_SUBJECTS_DIR = "\\\\wsl.localhost\\Ubuntu-20.04\\usr\\local\\freesurfer\\7-dev\\subjects"
+
 def main():
+    splitter = "\\" if platform.system().lower().startswith("win") else "/"
+    FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
+    if FS_SUBJECTS_DIR == None:
+        print(f"It seems freesurfer is not properly set up on your computer")
+        # might also mean we are on windows, so:
+        FS_SUBJECTS_DIR = "\\\\wsl.localhost\\Ubuntu-20.04\\usr\\local\\freesurfer\\7-dev\\subjects"
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", action="store", 
                         type=str, required=False,
                         help="Name of the Patient/ Subject to process")
     parser.add_argument("--bidsroot", action="store", type=str, required=False, 
-                        help="Specify BIDS root directory to use")
+                        help="Specify a different BIDS root directory to use")
     parser.add_argument("--inputfolder", action="store", type=str, required=False, 
                         help="Specify a different data input folder")
     parser.add_argument("--fsonly", action="store", type=str, required=False, 
@@ -100,10 +102,7 @@ def main():
                             oct5 --> 1026 Source points \
                             || oct6 --> 4098 Source points \
                             || ico5 --> 10242 Source points")
-    #parser.add_argument("--openmp", action="store", type=str, required=False, 
-    #                    help="Specify how many jobs/ processor cores to use")
-    #parser.add_argument("--openmp", action="store", type=str, required=False, 
-    #                    help="Specify how many jobs/ processor cores to use")
+
     args = parser.parse_args()  
 
 # define subject
@@ -117,8 +116,10 @@ def main():
     
 # additional arguments
     if args.openmp:
-        openmp = args.openmp
+        n_jobs = openmp = int(args.openmp)
         print(f"Using {openmp} processor cores/ jobs.")
+    else:
+        n_jobs = openmp = int(1)
     
     if not args.srcspacing:
         spacing = "ico4"
@@ -132,31 +133,17 @@ def main():
             raise Exception
 
 
-# make sure we have an MRI, convert, if necessary
+# MRI to nii.gz, then freesurfer, then hippocampal subfields
+# Naturally, this only works with a freesurfer environment 
+# this will take some time...
     anafolder = opj(input_folder, subject)
-    nii = glob.glob(opj(input_folder, subject, "*.nii*"))
-    if os.path.isdir(anafolder) and nii == []:
-        folder = str(glob.glob((anafolder + '/1*/100*/100*'), recursive=True)[0])
-        try:
-            convert_directory(
-                dicom_directory=folder, 
-                output_folder=anafolder, 
-                compression=True, 
-                reorient=True)
-            print("\nMRI was converted to .nii.gz\n")
-        except Exception as e:
-            print(f"Something went wrong trying to convert the MRI to nifti: {e}")
-    nii = glob.glob(opj(input_folder, subject, "*.nii*"))
-    if nii == []:
-        print("No anatomical data found, did you provide an MRI?")
-    else:
-        print(f"\nMRI already is in nifti-Format: {nii}\nDoing nothing...\n")
+    if os.path.isdir(anafolder):
+        rap = Anatomist.RawAnatomyProcessor(anafolder, FS_SUBJECTS_DIR, n_jobs=n_jobs)
+        rap.run_anatomy_pipeline()
 
 # Check if only freesurfer segmentation was desired and comply, if true
-# Naturally, this only works with a freesurfer environment 
     if args.fsonly and args.fsonly.lower() == "true":
-        command = f"recon-all -i {nii[0]} -s {subject} -openmp {openmp} - all"
-        u.run_shell_command(command)
+        exit()
     
 # create folder structure and copy 
     fbase = opj(bids_root, "derivatives", "sub-" + subject)

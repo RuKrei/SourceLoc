@@ -9,7 +9,6 @@ from os.path import join as opj
 import argparse
 import glob
 import subprocess
-import shutil
 
 class RawAnatomyProcessor:
     """ This class is responsible for processing 
@@ -19,15 +18,16 @@ class RawAnatomyProcessor:
         - nifti to freesurfer (recon-all)
         It also runs the watershed algorithm needed for the head model.
     """
-    def __init__(self, mri_folder, subjects_dir, n_jobs):
-        self.mri_folder = mri_folder
-        self.subjects_dir = subjects_dir
-        self.subject = os.path.dirname(self.subjects_dir)
-        self.FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
-        self.n_jobs = n_jobs
+    def __init__(self, mri_folder, FS_SUBJECTS_DIR, n_jobs):
+        self.mri_folder = os.path.expanduser(mri_folder)
+        self.subject = os.path.basename(os.path.normpath(self.mri_folder))
+        self.FS_SUBJECTS_DIR = FS_SUBJECTS_DIR
+        self.n_jobs = int(n_jobs)
     
     def _dicom_to_nii(self):
-        folder = str(glob.glob(opj(self.mri_folder, "1*", "100*", "100*"), recursive=True)[0])
+        folder = opj(self.mri_folder, "1*", "100*", "1*")
+        print(f"dicom_to_nii - folder = {folder}")
+        folder = str(glob.glob(folder, recursive=True)[0])
         try:
             convert_directory(
                 dicom_directory=folder, 
@@ -56,7 +56,7 @@ class RawAnatomyProcessor:
         else:
             print(f"A freesurfer segmentation of subject {self.subject} already exists in {self.FS_SUBJECTS_DIR}")
 
-    def _run_shell_command(command):
+    def _run_shell_command(self, command):
         subprocess.run(command, shell=True, capture_output=True, check=True)
     
     def _segment_hippocampal_subfields(self):
@@ -86,22 +86,27 @@ class HeadModeler:
     """
     pass
 
-class HippocampusSegmenter:
-    """Adds hippocampal subfield segmentation
+
+
+def main(inputfolder=None):
+    """Transforms: 
+        - DICOM  to nifti
+        - nifti to freesurfer (recon-all)
+        - runs watershed algorithm needed for head modeling.
+
+    Args:
+        inputfolder ([Directory path], mandatory): [Path to dicom or nii directory]. Defaults to None.
+
+    Returns:
+        None
+        .nii.gz - file is stored in <inputfolder>
+        freesurfer output is stored in $SUBJECTS_DIR
     """
-    pass
-
-
-def main():
-    FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
-    if FS_SUBJECTS_DIR == None:
-        print(f"It seems freesurfer is not properly set up on your computer")
-    parser = argparse.ArgumentParser()    
-    parser.add_argument("--subject", action="store", 
-                        type=str, required=False,
-                        help="Name of the Patient/ Subject to process")    
-    parser.add_argument("--inputfolder", action="store", type=str, required=False, 
-                        help="Specify a different data input folder")
+    parser = argparse.ArgumentParser()     
+    parser.add_argument("--inputfolder", action="store", type=str, required=True, 
+                        help="Specify the mri data input folder")
+    parser.add_argument("--SUBJECTS_DIR", action="store", type=str, required=False, 
+                        help="Freesurfer subjects dir ($SUBJECTS_DIR)")
     parser.add_argument("--fsonly", action="store", type=str, required=False, 
                         help="Use --fsonly true if you only want to do a freesurfer segmentation")      # do only freesurfer segmentation
     parser.add_argument("--openmp", action="store", type=str, required=False, 
@@ -116,17 +121,25 @@ def main():
     
     args = parser.parse_args() 
     
-    subject = args.subject    
-    if not subject:
-        print(f"No valid subject specified, aborting!")
-    print(f"Subject = {subject}")
+    inputfolder = args.inputfolder
+    print(f"Inputfolder = {inputfolder}")
+    subject = os.path.basename(os.path.normpath(inputfolder))
+    print(f"Subjectname = {subject}")
     
     if args.openmp:
-        openmp = n_jobs = args.openmp
+        openmp = n_jobs = int(args.openmp)
         print(f"Using {openmp} processor cores/ jobs.")
     else:
-        openmp = n_jobs = args.openmp
+        openmp = n_jobs = int(1)
+
+    if args.SUBJECTS_DIR:
+        FS_SUBJECTS_DIR = args.SUBJECTS_DIR
+    else:
+        FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
     
+    if FS_SUBJECTS_DIR == None:
+        print(f"It seems freesurfer is not properly set up on your computer")
+
     if not args.srcspacing:
         spacing = "ico4"
     else:
@@ -138,7 +151,7 @@ def main():
                 Options are: "ico4", "oct5", "oct6", "ico5"')
             raise Exception
     
-    rap = RawAnatomyProcessor(subject, FS_SUBJECTS_DIR, n_jobs=1)
+    rap = RawAnatomyProcessor(inputfolder, FS_SUBJECTS_DIR, n_jobs=n_jobs)
     rap.run_anatomy_pipeline()
 
 
