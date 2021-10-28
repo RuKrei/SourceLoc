@@ -9,6 +9,7 @@ from os.path import join as opj
 import argparse
 import glob
 import subprocess
+import mne
 
 class RawAnatomyProcessor:
     """ This class is responsible for processing 
@@ -21,6 +22,8 @@ class RawAnatomyProcessor:
     def __init__(self, mri_folder, FS_SUBJECTS_DIR, n_jobs):
         self.mri_folder = os.path.expanduser(mri_folder)
         self.subject = os.path.basename(os.path.normpath(self.mri_folder))
+        if not self.subject.startswith("sub-"):
+            self.subject = "sub-" + self.subject
         self.FS_SUBJECTS_DIR = FS_SUBJECTS_DIR
         self.n_jobs = int(n_jobs)
     
@@ -74,13 +77,13 @@ class RawAnatomyProcessor:
             print(f"Omitting hippocampal segmentation for subject {self.subject}, as it already exists")
     
     def _run_watershed(self):
-        pass
+        mne.bem.make_watershed_bem(self.subject, self.FS_SUBJECTS_DIR, copy=True)
 
     def run_anatomy_pipeline(self):
         self._dicom_to_nii()
         self._nii_to_freesurfer()
         self._segment_hippocampal_subfields()
-        # self._run_watershed()
+        self._run_watershed()
       
 
 class HeadModeler:

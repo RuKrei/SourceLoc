@@ -15,7 +15,7 @@ from mne_bids import make_dataset_description, \
                         BIDSPath, write_anat, write_raw_bids, \
                         read_raw_bids
 from src.utils import utils as u
-from src import Anatomist
+from src import Anatomist, Folderer
 import platform
 import pickle
 import matplotlib.pyplot as plt
@@ -139,59 +139,32 @@ def main():
     anafolder = opj(input_folder, subject)
     if os.path.isdir(anafolder):
         rap = Anatomist.RawAnatomyProcessor(anafolder, FS_SUBJECTS_DIR, n_jobs=n_jobs)
-        rap.run_anatomy_pipeline()
+        try:
+            rap.run_anatomy_pipeline()
+        except Exception as e:
+            print(f"Something went wrong while processing anatomy: {e}")
 
 # Check if only freesurfer segmentation was desired and comply, if true
     if args.fsonly and args.fsonly.lower() == "true":
         exit()
     
 # create folder structure and copy 
-    fbase = opj(bids_root, "derivatives", "sub-" + subject)
-    fsrc = opj(fbase, "source_model")
-    fanat = opj(fbase, "freesurfer")
-    fprep = opj(fbase, "preprocessing")
-    spikes = opj(fbase, "spikes")
-    freq = opj(fbase, "frequency_distribution")
-    conn = opj(fbase, "connectivity")
-    ftrans = opj(fbase, "trans_files")
-    freport = opj(fbase, "report")
-    disclaimer = opj(extras_directory, "MEG_disclaimer.png")
-    title = opj(extras_directory, "MEG_title.png")
-    report_files = [disclaimer, title]
-    ana_dir = opj(extras_directory, "anatomy_templates")
-    ana_files = glob.glob(ana_dir)  
-    # create folders
-    folder_list = [fbase, fsrc, fanat, fprep, spikes, freq, conn, ftrans, freport]
-    for fld in folder_list:
-        if not os.path.exists(fld):
-            os.makedirs(fld, exist_ok=True)
-            print(f"Folder {fld} created.")
-    # copy disclaimer and title for report
-    for f in report_files:
-        try:
-            fi = f.split(splitter)[-1]
-            target = os.path.join(freport, fi)
-            shutil.copyfile(f, target)
-        except Exception as e:
-            print(e)
-        #copy fsaverage + fsaverage_sym to local subjects anatomy folder
-        for f in ana_files:
-            if not (f.split(splitter)[-1].endswith(".png")):
-                try:
-                    u.recursive_overwrite(f, fanat)
-                    print(f"Copying: {f}")
-                except Exception as e:
-                    print(e)
+    dfc = Folderer.DerivativesFoldersCreator(BIDS_root=bids_root, 
+                                            extras_directory=extras_directory, 
+                                            subject=subject)
+    dfc.make_derivatives_folders()
+
     
 # create BIDS dataset
     raws = glob.glob(input_folder + "/*.fif")
+    ject = subject.split("sub-")[-1]
+    nii = glob.glob(opj(input_folder, ject, "*.nii*"))
     raws = [f for f in raws if subject in f]
     print(f"The following raw files were found:\n{raws}")
     bids_path = BIDSPath(subject=subject, session="resting", task="resting", 
                            root=bids_root, processing=None)
-    fbase = os.path.join(bids_root, "derivatives", "sub-" + subject)
+    fbase = os.path.join(bids_root, "derivatives", "sub-" + ject)
     fmeg = opj(fbase, "meg")
-
     # anatomy
     try:
         for n in nii:
