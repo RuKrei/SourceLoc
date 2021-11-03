@@ -5,12 +5,10 @@
 
 
 import os
-import shutil
 import argparse
 from os.path import join as opj
 import glob
 import mne
-from mne.filter import _filter_attenuation
 from mne_bids import make_dataset_description, \
                         BIDSPath, write_anat, write_raw_bids, \
                         read_raw_bids
@@ -37,9 +35,9 @@ input_folder = "/home/idrael/playground/input_folder"
 openmp = n_jobs = 8
 
 # Filter and resample
-l_freq: int = 1, 
-h_freq: int = 70, 
-fir_design = "firwin"
+l_freq: float = 0.1    # lower pass-band edge
+h_freq: float = 70.   # higher pass-band edge
+fir_design: str = "firwin"
 s_freq: int = 300
 # ECG artifact correction
 ecg_channel = "ECG003"
@@ -111,8 +109,13 @@ def main():
         poss = [s for s in os.listdir(input_folder)]
         print(f"No subject specified, maybe you want to choose from those:\n {poss}")
         subject = input()
-    
-    print(f"Subject = {subject}")
+
+    if not subject.startswith("sub-"):
+        ject = str(subject)
+        subject = "sub-" + subject
+    else:
+        ject = subject.split("sub-")[-1]
+    print(f"Subject = {ject}")
     
 # additional arguments
     if args.openmp:
@@ -135,8 +138,8 @@ def main():
 
 # MRI to nii.gz, then freesurfer, then hippocampal subfields
 # Naturally, this only works with a freesurfer environment 
-# this will take some time...
-    anafolder = opj(input_folder, subject)
+# and this will take some time...
+    anafolder = opj(input_folder, ject)
     if os.path.isdir(anafolder):
         rap = Anatomist.RawAnatomyProcessor(anafolder, FS_SUBJECTS_DIR, n_jobs=n_jobs)
         try:
@@ -154,61 +157,128 @@ def main():
                                             subject=subject)
     dfc.make_derivatives_folders()
 
-    
-# create BIDS dataset
+
+# Load MEG files, filter, resample, concatenate
+# MEG files are expected to be maxfiltered + transpositioned
+# --> _tsss_trans.fif
+
+    # parse list of appropriate raws
     raws = glob.glob(input_folder + "/*.fif")
-    ject = subject.split("sub-")[-1]
-    nii = glob.glob(opj(input_folder, ject, "*.nii*"))
-    raws = [f for f in raws if subject in f]
+    raws = [f for f in raws if ject in f]
     print(f"The following raw files were found:\n{raws}")
-    bids_path = BIDSPath(subject=subject, session="resting", task="resting", 
-                           root=bids_root, processing=None)
-    fbase = os.path.join(bids_root, "derivatives", "sub-" + ject)
-    fmeg = opj(fbase, "meg")
-    # anatomy
+    prepper = u.RawPreprocessor()
+    for run, rawfile in enumerate(raws):
+        if "tsss" in rawfile and ject in rawfile:
+            # --> search for matching eventfile and combine
+                rawname = rawfile.strip(".fif") + "_prep.fif"
+                if not os.path.isfile(rawname) and not "_prep" in rawfile:  # --> if this has not been done already
+                    try:
+                        raw, event_file, event_dict = prepper.combine_raw_and_eve(rawfile, run=run)  
+                        event_file = event_file.to_numpy()  
+                    except:  # this fails if no Event-file exists, or if it is corrupted
+                        print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
+                        event_file = None
+                        event_dict = None
+                        raw = mne.io.read_raw(rawfile, preload=True, on_split_missing="ignore")
+                    # preprocessing
+                    raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
+                                                h_freq=h_freq, n_jobs=n_jobs)
+                    raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+                    # save
+                    raw.save(rawname, overwrite=True)
+                    del(raw)
+    # concatenate filtered and resampled files
+    raws = glob.glob(input_folder + "/*.fif")
+    raws = [f for f in raws if ject in f]
+    raws = [f for f in raws if "_prep" in f]
+    all_raws = dict()
+    concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
+    if not os.path.isfile(concatname):
+        for r in raws:
+            all_raws[r] = mne.io.read_raw(r, preload=False)
+        print(f"\n\n\n\nConcatenating files: {raws}")
+        try:
+            #raw = mne.concatenate_raws(list(all_raws[k] for k in all_raws.keys()))
+            raw = mne.concatenate_raws([all_raws[r] for r in all_raws.keys()])
+            print("Rawfiles have been concatenated....")
+
+        except Exception as e:
+            print(f"Failed trying to concatenate raw file\n {r} --> {e}")
+            #print("Loading only first raw file!")
+            #raw = mne.io.read_raw(raws[0])
+        concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
+        print(f"Saving concatenated rawfile as {concatname}")
+        raw.save(concatname)
+
+    # Save in BIDS format
+    derivatives_root = opj(bids_root, "derivatives")
+    # meg
+    bids_path = BIDSPath(subject=ject, session="resting", task="resting", 
+                           root=derivatives_root, processing="concat")
+    raw = mne.io.read_raw(concatname, preload=False)
+    write_raw_bids(raw, bids_path, overwrite=True)
+    # anatomy  
+#    fbase = os.path.join(bids_root, "derivatives", "sub-" + ject)
+    nii = glob.glob(opj(input_folder, ject, "*.nii*"))
+    bids_path.update(root=bids_root)
     try:
-        for n in nii:
-            bids_path.update(root=bids_root)
+        for n in nii:      
             write_anat(n, bids_path=bids_path, overwrite=True)
     except Exception as e:
         print(e)
+    bids_path.update(root=bids_root)
 
-    # MEG
-    # The following processing flags are added:
-    # - .fif                                --> None
-    # - tsss-trans.fif without event-file   --> tsssTrans
-    # - tsss-trans.fif + event-file         --> tsssTransEve
-    prepper = u.RawPreprocessor()
+
+    # Create Dataset
+    the_roots = [bids_root, derivatives_root]
+    for r in the_roots:
+        make_dataset_description(r, 
+                            name="CDK Epilepsy Dataset", 
+                            data_license="closed", 
+                            authors="Rudi Kreidenhuber", 
+                            overwrite=True)
+
+
+    """
+    
     # files are processed (Spike-Selection, Maxgfilter), so they should not 
     # be stored at BIDS-root anymore
-    derivatives_root = opj(bids_root, "derivatives")  
+    all_raws = dict()
     for run, rawfile in enumerate(raws):
         run +=1
-        if "tsss" in rawfile:
+        if "tsss" in rawfile and ject in rawfile:
             # --> search for matching eventfile and combine
-            eve_name = rawfile.split(".fif")[0] + "_Events.csv"
-            if not os.path.isfile(eve_name):
-                eve_name = rawfile.split(".fif")[0] + "_Events.txt"
-            if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
-                print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
-                raw = mne.io.read_raw(rawfile, preload=True)
-                event_file, event_dict = prepper.transform_eventfile(eve_name)
-                raw.add_events(event_file)
-                bids_path.update(root=derivatives_root, processing="tsssTransEve", run=run)
-                raw.save(rawfile, overwrite=True)
-                raw = mne.io.read_raw(rawfile, preload=False)
-                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file.to_numpy(), overwrite=True)
-            else: # tsss-file, but no events
-                print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
-                raw = mne.io.read_raw(rawfile, preload=False)
-                bids_path.update(root=derivatives_root, processing="tsssTrans")
-                write_raw_bids(raw, bids_path, overwrite=True)
-        else: # unprocessed raw file
-            print("\n\nFound raw file {rawfile}, saving in BIDS base.\n\n")
-            bids_path.update(root=bids_root, processing=None)
-            # write raw BIDS, as below
-            raw = mne.io.read_raw(rawfile)
-            write_raw_bids(raw, bids_path, overwrite=True)
+                try:
+                    raw, event_file, event_dict = prepper.combine_raw_and_eve(rawfile, run=run)  
+                    event_file = event_file.to_numpy()  
+                except:  # this fails if no Event-file exists, or if it is corrupted
+                    print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
+                    event_file = None
+                    event_dict = None
+                    raw = mne.io.read_raw(rawfile, preload=True)
+                #raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
+                #                            h_freq=h_freq, n_jobs=n_jobs)
+                raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+                all_raws[run] = raw.copy()
+                bids_path.update(root=derivatives_root, processing="Prepared", run=run)
+                modfile = rawfile.split(".fif")[0] + "-prep.fif"
+                raw.save(modfile, overwrite=True)
+                raw = mne.io.read_raw(modfile, preload=False)
+                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file, overwrite=True)
+
+
+    bids_derivatives = BIDSPath(subject=ject, 
+                    datatype="meg", 
+                    session="resting", 
+                    task="resting", 
+                    root=derivatives_root, 
+                    processing="Concat", 
+                    suffix="meg")
+    raw.save(modfile, overwrite=True)
+    raw = mne.io.read_raw(modfile, preload=False)
+    write_raw_bids(raw, bids_derivatives, overwrite=True)
+    del all_raws
+
 
 #######################################################################################
 #######################################################################################
@@ -219,45 +289,20 @@ def main():
 #######################################################################################
 #######################################################################################
     
-    # Dataset
-    the_roots = [bids_root, derivatives_root]
-    for r in the_roots:
-        make_dataset_description(r, 
-                            name="CDK Epilepsy Dataset", 
-                            data_license="closed", 
-                            authors="Rudi Kreidenhuber", 
-                            overwrite=True)
 
-# Adjust subject variable, so we comply with BIDS convention
-    if not subject.startswith("sub-"):
-        subject = "sub-" + subject
 
-# Freesurfer segmentation - nipype makes this very convenient
-    fs_folder = opj(FS_SUBJECTS_DIR, subject)
-    if os.path.isdir(fs_folder):
-        print(f"A freesurfer segmentation for {subject} exists at:\n \
-                {fs_folder}")
-        
-        
-    else:
-        anafolder = opj(bids_root, subject, "ses-resting", "anat")
-        print(f"anafolder {anafolder}")
-        nii = glob.glob(anafolder + splitter +  "*.nii*")[0]
-        reconall = ReconAll()
-        reconall.inputs.subject_id = subject
-        reconall.inputs.T1_files = nii
-        reconall.inputs.directive = 'all'
-        reconall.inputs.subjects_dir = FS_SUBJECTS_DIR
-        reconall.inputs.openmp = openmp
-        reconall.inputs.flags = "-3T"
-        reconall.run()
-    this_subjects_dir = opj(fanat, subject)
-    if not os.path.isdir(this_subjects_dir):
-        u.recursive_overwrite(fs_folder, this_subjects_dir)
-    else:
-        print(f"Freesurfer segmentation already exists at {this_subjects_dir} \
-                --> doing nothing...")
+
+
+
+    exit()
+
     
+
+
+
+
+
+
 # Head model --> fails without freesurfer
     if not os.path.isfile(opj(this_subjects_dir, "bem", subject + "-head.fif")):
         try:    
@@ -425,35 +470,49 @@ def main():
         print(f"Resample to {s_freq}")
         print(f"Original sampling frequency was: {raw.info['sfreq']}")
         raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
-        # ECG artifacts
-        # It's smarter to supervise this step (--> look at the topomaps!)
-        try:
-            ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
-                                                              n_eeg=n_eeg, reject=None)
-            # lets not do this now......
-            raw.add_proj(ecg_projs, remove_existing=False)
-            #raw.apply_proj(ecg_projs, verbose=None) # don't do this in the early stages - see documentation
-            fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
-            savename = os.path.join(fprep, "ECG_projs_Topomap.png")
+        
+        
+
+
+
+
+    """
+
+# Artifacts        
+    # ECG artifacts
+    # It's smarter to supervise this step (--> look at the topomaps!)
+    raw.load_data()
+    try:
+        ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
+                                                          n_eeg=n_eeg, reject=None)
+        # lets not do this now......
+        raw.add_proj(ecg_projs, remove_existing=False)
+        fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
+        savename = os.path.join(dfc.fprep, "ECG_projs_Topomap.png")
+        fig.savefig(savename)
+    except Exception as e:
+        print(e)
+        print("ECG - Atrifact correction failed!")
+    #EOG artifacts    
+    # It's a bad idea to do this in an automated step
+    try:
+        eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
+        #eog_evoked.apply_baseline((None, None))
+        eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
+                                                    n_jobs=n_jobs, reject=None)
+        raw.add_proj(eog_projs, remove_existing=False) # --> don't do this in the early stages - see documentation
+        figs = eog_evoked.plot_joint(show=False)
+        for idx, fig in enumerate(figs):
+            savename = os.path.join(dfc.fprep, "EOG Topomap_" + str(idx) + ".png")
             fig.savefig(savename)
-        except Exception as e:
-            print(e)
-            print("ECG - Atrifact correction failed!")
-        #EOG artifacts    
-            ## It's a bad idea to do this in an automated step
-            #try:
-            #    eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
-            #    #eog_evoked.apply_baseline((None, None))
-            #    eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
-            #                                                n_jobs=n_jobs, reject=None)
-            #    raw.add_proj(eog_projs, remove_existing=False) # .apply_proj() --> don't do this in the early stages - see documentation
-            #    figs = eog_evoked.plot_joint(show=False)
-            #    for idx, fig in enumerate(figs):
-            #        savename = os.path.join(preproc_folder, "EOG Topomap_" + str(idx) + ".png")
-            #        fig.savefig(savename)
-            #except Exception as e:
-            #    print(e)
-            #    print("EOG - Atrifact correction failed!")
+    except Exception as e:
+        print(e)
+        print("EOG - Atrifact correction failed!")
+    raw.apply_proj()
+
+        
+    """    
+        
         # save - if events have been found
         events, event_ids = mne.events_from_annotations(raw)
         bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
@@ -477,22 +536,28 @@ def main():
             write_raw_bids(raw, bids_derivatives, overwrite=True)
     else:
         print("Omitting preprocessing steps, as preprocessed file has been found.")
+    """
 
 # Coregistration --> this doesn't work with WSLg - from here on
 # run on windows, if you are on a windows machine
-    transfile = opj(ftrans, subject + "-trans.fif")
+    transfile = opj(dfc.ftrans, subject + "-trans.fif")
     if os.path.isfile(transfile):
         print(f"Skipping coregistration, because a transfile ({transfile}) already exists")
     else:
         print(f"\n\n\n--> Transfile should be called: {transfile}\n\n\n")
         try:
-            mne.gui.coregistration(subject=subject, subjects_dir=fanat, inst=bids_derivatives, advanced_rendering=False) # BIDS: inst=raw.filenames[0])
+            mne.gui.coregistration(subject=subject, subjects_dir=dfc.fanat, inst=bids_path, advanced_rendering=False) # BIDS: inst=raw.filenames[0])
         except:
-            print("failed with bids_derivatives")
-            rawfile = meg_dir + splitter + "*Preproc*.fif"
+            print("failed with bids_derivatives folder")
+            rawfile = opj(dfc.fbase, "ses-resting", "meg") + splitter + "*concat_meg.fif"
             print(f"Rawfile = {rawfile}")
             rawfile = glob.glob(rawfile)[0]
-            mne.gui.coregistration(subject=subject, subjects_dir=fanat, inst=rawfile, advanced_rendering=False)
+            mne.gui.coregistration(subject=subject, subjects_dir=dfc.fanat, inst=rawfile, advanced_rendering=False)
+
+    exit()
+
+
+
 
 ## frequency spectrum
 #    bem_sol = opj(fsrc, subject + "-3-layer-BEM-sol.fif")
@@ -597,6 +662,7 @@ def main():
     #all_raws = glob.glob(target_dir + "*tsssTransEve_meg.fif")    # should already be concatenated
     #raw = read_raw_bids(all_raws[0])
     
+    """
     bids_derivatives.update(processing="finalEpochs", session="99")
     fname = os.path.join(derivatives_root, subject, "ses-resting", "meg", bids_derivatives.basename)
     fname = fname + ".fif"
@@ -731,7 +797,7 @@ def main():
                     plt.close("all")
             except Exception as e:
                 print(e)
-
+        """
 
 if __name__ == '__main__':
     main()
@@ -742,5 +808,7 @@ To do:
     update auto-recon-all to also take care of head-model (--> watershed uses freesurfer)
     
     resample and concatenate at the beginning of the pipeline --> check, that it works properly
+
+    fix filtering, resampling
     
 """

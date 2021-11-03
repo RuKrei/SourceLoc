@@ -204,15 +204,41 @@ class RawPreprocessor():
             event_dict[key] = val
         return new_eve_file, event_dict
     
-    def filter_raw(self, raw, l_freq, h_freq, n_jobs=1):
+    def filter_raw(self, raw, l_freq, h_freq, n_jobs=1, fir_design="firwin"):
         raw.load_data()
         raw = raw.filter(l_freq=l_freq, h_freq=h_freq, 
-                        n_jobs=1, fir_design="firwin2")
+                        n_jobs=n_jobs, fir_design=fir_design)
+        print("Filtering complete!")
         return raw
     
     def resample_raw(self, raw, s_freq=300, n_jobs=1):
-        raw.resample(s_freq, npad='auto')
+        print(f"Resampling to {s_freq} Hz")
+        raw.resample(s_freq, npad='auto', n_jobs=n_jobs)
+        print("Resamling complete!")
         return raw
+
+    def combine_raw_and_eve(self, rawfile=None, eve=None, run=1):
+        eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+        if not os.path.isfile(eve_name):
+            eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+        if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+            print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
+            raw = mne.io.read_raw(rawfile, preload=True, on_split_missing="ignore")
+            event_file, event_dict = self.transform_eventfile(eve_name)
+            raw.add_events(event_file)
+            return raw
+
+
+
+
+
+
+
+
+
+
+
+
 
 def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None, 
                         filebase=None):
