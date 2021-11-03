@@ -554,107 +554,110 @@ def main():
             rawfile = glob.glob(rawfile)[0]
             mne.gui.coregistration(subject=subject, subjects_dir=dfc.fanat, inst=rawfile, advanced_rendering=False)
 
+
+
+
+
+# frequency spectrum
+    bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
+    fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
+    srcfilename = opj(dfc.fsrc, subject + "-" + spacing + "-src.fif")
+    filebase = str(subject) + "_Freqs"
+    all_stcs_filename = (filebase + '-stc-psd-MNE.pkl')
+    all_stcs_filename = opj(dfc.freq, all_stcs_filename)
+    sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
+    sensor_psd_filename = opj(dfc.freq, sensor_psd_filename)
+    if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):  # so this should run only on the first file..
+        raw.load_data()
+        if os.path.isfile(fwd_name):
+            fwd = mne.read_forward_solution(fwd_name)
+        else:    
+            fwd = mne.make_forward_solution(raw.info, src=srcfilename, bem=bem_sol,
+                                            trans=transfile, 
+                                            meg=True, eeg=False, mindist=0.2, 
+                                            ignore_ref=False, 
+                                            n_jobs=n_jobs, verbose=True)
+            mne.write_forward_solution(fwd_name, fwd)
+        noise_cov = mne.compute_raw_covariance(raw, method="empirical", n_jobs=n_jobs)
+        inv = mne.minimum_norm.make_inverse_operator(raw.info, forward=fwd, noise_cov=noise_cov, 
+                                            loose="auto", depth=0.8)
+        snr = 3.
+        lambda2 = 1. / snr ** 2
+        stc_psd, sensor_psd = mne.minimum_norm.compute_source_psd(raw, inv, lambda2=lambda2, 
+                                                method='MNE', 
+                                                fmin=1, fmax=45, n_fft=2048, n_jobs=n_jobs, 
+                                                return_sensor=True, verbose=True)
+        pickle.dump(stc_psd, open(all_stcs_filename, "wb"))
+        pickle.dump(sensor_psd, open(sensor_psd_filename, "wb"))
+    else:
+        stc_psd = pickle.load(open(all_stcs_filename, "rb"))
+        sensor_psd = pickle.load(open(sensor_psd_filename, "rb"))
+    # Visualization
+    topos = dict()
+    stcs = dict()
+    topo_norm = sensor_psd.data.sum(axis=1, keepdims=True)
+    stc_norm = stc_psd.sum()
+    for band, limits in freq_bands.items():         # normalize...
+        data = sensor_psd.copy().crop(*limits).data.sum(axis=1, keepdims=True)
+        topos[band] = mne.EvokedArray(100 * data / topo_norm, sensor_psd.info)
+        stcs[band] = 100 * stc_psd.copy().crop(*limits).sum() / stc_norm.data
+    brain = dict()
+    x_hemi_freq = dict()
+    mne.viz.set_3d_backend('pyvista')
+    for band in freq_bands.keys():
+        brain[band] = u.plot_freq_band_dors(stcs[band], band=band, subject=subject, 
+                                            subjects_dir=dfc.fanat, filebase=filebase)
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_dors.png')
+        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+        image = brain[band].save_image(freqfilename3d)
+        brain_lh, brain_rh = u.plot_freq_band_lat(stcs[band], band=band, subject=subject, 
+                                                    subjects_dir=dfc.fanat,
+                                                    filebase=filebase)                                           
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_lh.png')
+        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+        image = brain_lh.save_image(freqfilename3d)
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_rh.png')
+        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+        image = brain_rh.save_image(freqfilename3d)
+        brain_lh, brain_rh = u.plot_freq_band_med(stcs[band], band=band, subject=subject, 
+                                                    subjects_dir=dfc.fanat,
+                                                    filebase=filebase)                                           
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_lh.png')
+        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+        image = brain_lh.save_image(freqfilename3d)
+        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_rh.png')
+        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+        image = brain_rh.save_image(freqfilename3d)
+    # 2. Cross hemisphere comparison
+        # make sure fsaverage_sym exists in local subjects dir:
+        target = os.path.join(dfc.fanat, "fsaverage_sym")
+        if not os.path.isdir(target):
+            # try to find it in $SUBJECTS_DIR and copy
+            os_subj_dir = os.environ.get("SUBJECTS_DIR")
+            fs_avg_sym_dir = os.path.join(os_subj_dir, "fsaverage_sym")
+            u.recursive_overwrite(fs_avg_sym_dir, target)
+        mstc = stcs[band].copy()
+        mstc = mne.compute_source_morph(mstc, subject, 'fsaverage_sym',
+                                                    smooth=5,
+                                                    warn=False,
+                                                    subjects_dir=dfc.fanat).apply(mstc)
+        morph = mne.compute_source_morph(mstc, 'fsaverage_sym', 'fsaverage_sym',
+                                                    spacing=mstc.vertices, warn=False,
+                                                    subjects_dir=dfc.fanat, xhemi=True,
+                                                    verbose='error')
+        stc_xhemi = morph.apply(mstc)
+        diff = mstc - stc_xhemi
+        title = ('blue = RH; ' + subject + ' -Freq-x_hemi- ' + band)
+        x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=dfc.fanat, 
+                                size=(1200, 800), time_label=title,
+                                add_data_kwargs=dict(time_label_size=10))
+        freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
+        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+        image = x_hemi_freq[band].save_image(freqfilename3d)
+
+
     exit()
 
-
-
-
-## frequency spectrum
-#    bem_sol = opj(fsrc, subject + "-3-layer-BEM-sol.fif")
-#    fwd_name = opj(fsrc, subject + "-fwd.fif")
-#    srcfilename = opj(fsrc, subject + "-" + spacing + "-src.fif")
-#    filebase = str(subject) + "_Freqs"
-#    all_stcs_filename = (filebase + '-stc-psd-MNE.pkl')
-#    all_stcs_filename = opj(freq, all_stcs_filename)
-#    sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
-#    sensor_psd_filename = opj(freq, sensor_psd_filename)
-#    if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):  # so this should run only on the first file..
-#        raw.load_data()
-#        if os.path.isfile(fwd_name):
-#            fwd = mne.read_forward_solution(fwd_name)
-#        else:    
-#            fwd = mne.make_forward_solution(raw.info, src=srcfilename, bem=bem_sol,
-#                                            trans=transfile, 
-#                                            meg=True, eeg=False, mindist=0.2, 
-#                                            ignore_ref=False, 
-#                                            n_jobs=n_jobs, verbose=True)
-#            mne.write_forward_solution(fwd_name, fwd)
-#        noise_cov = mne.compute_raw_covariance(raw, method="empirical", n_jobs=n_jobs)
-#        inv = mne.minimum_norm.make_inverse_operator(raw.info, forward=fwd, noise_cov=noise_cov, 
-#                                            loose="auto", depth=0.8)
-#        snr = 3.
-#        lambda2 = 1. / snr ** 2
-#        stc_psd, sensor_psd = mne.minimum_norm.compute_source_psd(raw, inv, lambda2=lambda2, 
-#                                                method='MNE', 
-#                                                fmin=1, fmax=45, n_fft=2048, n_jobs=n_jobs, 
-#                                                return_sensor=True, verbose=True)
-#        pickle.dump(stc_psd, open(all_stcs_filename, "wb"))
-#        pickle.dump(sensor_psd, open(sensor_psd_filename, "wb"))
-#    else:
-#        stc_psd = pickle.load(open(all_stcs_filename, "rb"))
-#        sensor_psd = pickle.load(open(sensor_psd_filename, "rb"))
-#    # Visualization
-#    topos = dict()
-#    stcs = dict()
-#    topo_norm = sensor_psd.data.sum(axis=1, keepdims=True)
-#    stc_norm = stc_psd.sum()
-#    for band, limits in freq_bands.items():         # normalize...
-#        data = sensor_psd.copy().crop(*limits).data.sum(axis=1, keepdims=True)
-#        topos[band] = mne.EvokedArray(100 * data / topo_norm, sensor_psd.info)
-#        stcs[band] = 100 * stc_psd.copy().crop(*limits).sum() / stc_norm.data
-#    brain = dict()
-#    x_hemi_freq = dict()
-#    mne.viz.set_3d_backend('pyvista')
-#    for band in freq_bands.keys():
-#        brain[band] = u.plot_freq_band_dors(stcs[band], band=band, subject=subject, 
-#                                            subjects_dir=fanat, filebase=filebase)
-#        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_dors.png')
-#        freqfilename3d = os.path.join(freq, freqfilename3d)
-#        image = brain[band].save_image(freqfilename3d)
-#        brain_lh, brain_rh = u.plot_freq_band_lat(stcs[band], band=band, subject=subject, 
-#                                                    subjects_dir=fanat,
-#                                                    filebase=filebase)                                           
-#        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_lh.png')
-#        freqfilename3d = os.path.join(freq, freqfilename3d)
-#        image = brain_lh.save_image(freqfilename3d)
-#        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_rh.png')
-#        freqfilename3d = os.path.join(freq, freqfilename3d)
-#        image = brain_rh.save_image(freqfilename3d)
-#        brain_lh, brain_rh = u.plot_freq_band_med(stcs[band], band=band, subject=subject, 
-#                                                    subjects_dir=fanat,
-#                                                    filebase=filebase)                                           
-#        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_lh.png')
-#        freqfilename3d = os.path.join(freq, freqfilename3d)
-#        image = brain_lh.save_image(freqfilename3d)
-#        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_rh.png')
-#        freqfilename3d = os.path.join(freq, freqfilename3d)
-#        image = brain_rh.save_image(freqfilename3d)
-#    # 2. Cross hemisphere comparison
-#        # make sure fsaverage_sym exists in local subjects dir:
-#        target = os.path.join(fanat, "fsaverage_sym")
-#        if not os.path.isdir(target):
-#            # try to find it in $SUBJECTS_DIR and copy
-#            os_subj_dir = os.environ.get("SUBJECTS_DIR")
-#            fs_avg_sym_dir = os.path.join(os_subj_dir, "fsaverage_sym")
-#            u.recursive_overwrite(fs_avg_sym_dir, target)
-#        mstc = stcs[band].copy()
-#        mstc = mne.compute_source_morph(mstc, subject, 'fsaverage_sym',
-#                                                    smooth=5,
-#                                                    warn=False,
-#                                                    subjects_dir=fanat).apply(mstc)
-#        morph = mne.compute_source_morph(mstc, 'fsaverage_sym', 'fsaverage_sym',
-#                                                    spacing=mstc.vertices, warn=False,
-#                                                    subjects_dir=fanat, xhemi=True,
-#                                                    verbose='error')
-#        stc_xhemi = morph.apply(mstc)
-#        diff = mstc - stc_xhemi
-#        title = ('blue = RH; ' + subject + ' -Freq-x_hemi- ' + band)
-#        x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=fanat, 
-#                                size=(1200, 800), time_label=title,
-#                                add_data_kwargs=dict(time_label_size=10))
-#        freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
-#        freqfilename3d = os.path.join(freq, freqfilename3d)
-#        image = x_hemi_freq[band].save_image(freqfilename3d)
 
 # Source localization
     #target_dir = os.path.join(derivatives_root, subject, 
