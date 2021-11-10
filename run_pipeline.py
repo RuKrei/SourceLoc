@@ -172,7 +172,6 @@ def main():
     sourcerer = Anatomist.SourceModeler(subjects_dir=dfc.fanat, subject=subject, spacing=spacing, n_jobs=n_jobs)
     sourcerer.calculate_source_models()
 
-    exit()
 
 # Load MEG files, filter, resample, concatenate
 # MEG files are expected to be maxfiltered + transpositioned
@@ -308,109 +307,6 @@ def main():
 
 
 
-
-
-    exit()
-
-    
-
-
-
-
-
-
-# Head model --> fails without freesurfer
-    if not os.path.isfile(opj(this_subjects_dir, "bem", subject + "-head.fif")):
-        try:    
-            mne.bem.make_watershed_bem(subject=subject, subjects_dir=this_subjects_dir, overwrite=True)
-        except Exception as e:
-            print("#"*30)
-            print("#"*30)
-            print("#"*30)
-            print(f"Failed to make watershed BEM for {subject}\n--> {e}")
-
-# Volume source space
-    srcfilename = opj(fsrc, subject  + "-vol-src.fif")
-    if not os.path.isfile(srcfilename):
-        try:    
-            src_vol = mne.setup_volume_source_space(subject, pos=3.0, 
-                                            subjects_dir = fanat, 
-                                            verbose=True)
-            mne.write_source_spaces(srcfilename, src_vol, overwrite=True, verbose=True)
-        except Exception as e:
-            print("#"*30)
-            print("#"*30)
-            print("#"*30)
-            print(f"Failed to setup Volume source space for {subject} --> {e}")
-
-# Cortex source space
-    srcfilename = opj(fsrc, subject + "-" + spacing + "-src.fif")
-    if not os.path.isfile(srcfilename):
-        try:
-            src = mne.setup_source_space(subject, spacing = spacing, 
-                                            subjects_dir = fanat, 
-                                            n_jobs=n_jobs, 
-                                            verbose=True)
-            mne.write_source_spaces(srcfilename, src, overwrite=True, verbose=True)
-        except Exception as e:
-            print("#"*30)
-            print("#"*30)
-            print("#"*30)
-            print(f"Failed to setup source space with spacing {spacing} \
-                    for {subject} --> {e}")
-
-# BEM Solutions - single shell
-    bem_save_name = opj(fsrc, subject + "-single-shell-model")
-    if not os.path.isfile(bem_save_name):
-        try:
-            bem = mne.make_bem_model(subject, ico=4, 
-                            conductivity=[0.3],   
-                            subjects_dir=fanat, verbose=True)
-            mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
-        except Exception as e:
-            print("#"*30)
-            print("#"*30)
-            print("#"*30)
-            print(f"Failed to setup single shell BEM model for {subject} --> {e}")
-    bem_sol_filename = opj(fsrc, subject + "-single-shell-BEM-sol.fif")
-    if not os.path.isfile(bem_sol_filename):
-        try:
-            bem = mne.read_bem_surfaces(bem_save_name)    
-            bem_sol = mne.make_bem_solution(bem)
-            mne.write_bem_solution(bem_sol_filename, bem_sol, overwrite=True)
-        except Exception as e:
-            print("#"*30)
-            print("#"*30)
-            print("#"*30)
-            print(f"Failed to calculate BEM solution (single-shell) for {subject} --> {e}")
-
-
-    # BEM Solutions - 3-layer-BEM
-    bem_save_name = opj(fsrc, subject + "-3-layer-BEM-model.fif")
-    if not os.path.isfile(bem_save_name):
-        try:
-            bem = mne.make_bem_model(subject, ico=4, 
-                            conductivity=[0.3, 0.006, 0.3],   
-                            subjects_dir=fanat, verbose=True)
-            mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
-        except Exception as e:
-            print("#"*30)
-            print("#"*30)
-            print("#"*30)
-            print(f"Failed to calculate 3-layer BEM model for {subject} --> {e}")
-    bem_sol_filename = opj(fsrc, subject + "-3-layer-BEM-sol.fif")
-    if not os.path.isfile(bem_sol_filename):
-        try:
-            bem = mne.read_bem_surfaces(bem_save_name)    
-            bem_sol = mne.make_bem_solution(bem)
-            mne.write_bem_solution(bem_sol_filename, bem_sol, overwrite=True)
-        except Exception as e:
-            print("#"*30)
-            print("#"*30)
-            print("#"*30)
-            print(f"Failed to calculate 3-layer BEM solution for {subject} --> {e}")
-            print("This is bad, please look into the freesurfer segmentation...")
-            print("Alternatively, you might be able to run the analysis with a single-shell-head-model (look into the configuration file")
 
 
 # .fif data preparations
@@ -672,7 +568,8 @@ def main():
         image = x_hemi_freq[band].save_image(freqfilename3d)
 
 
-    exit()
+
+
 
 
 # Source localization
@@ -681,7 +578,7 @@ def main():
     #all_raws = glob.glob(target_dir + "*tsssTransEve_meg.fif")    # should already be concatenated
     #raw = read_raw_bids(all_raws[0])
     
-    """
+
     bids_derivatives.update(processing="finalEpochs", session="99")
     fname = os.path.join(derivatives_root, subject, "ses-resting", "meg", bids_derivatives.basename)
     fname = fname + ".fif"
@@ -816,7 +713,7 @@ def main():
                     plt.close("all")
             except Exception as e:
                 print(e)
-        """
+  
 
 if __name__ == '__main__':
     main()
