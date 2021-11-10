@@ -24,13 +24,13 @@ import numpy as np
 ####################################################################
 ####################################################################
 # configuration
-bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
-extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
-input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
+#bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
+#extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
+#input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
 
-#bids_root = "/home/idrael/playground/BIDS_root"
-#extras_directory = "/home/idrael/playground/extras"
-#input_folder = "/home/idrael/playground/input_folder"
+bids_root = "/home/idrael/playground/BIDS_root"
+extras_directory = "/home/idrael/playground/extras"
+input_folder = "/home/idrael/playground/input_folder"
 
 openmp = n_jobs = 8
 
@@ -157,6 +157,22 @@ def main():
                                             subject=subject)
     dfc.make_derivatives_folders()
 
+# copy freesurfer files to local subjects_dir
+    try:
+        segmentation = opj(FS_SUBJECTS_DIR, subject)
+        target = opj(dfc.fanat, subject)
+        if not os.path.isdir(target):
+            os.mkdir(target)
+        print(f"Copying freesurfer segmentation {segmentation} to {target}")
+        dfc._recursive_overwrite(segmentation, target)
+    except Exception as e:
+        print(e)
+
+# create source models
+    sourcerer = Anatomist.SourceModeler(subjects_dir=dfc.fanat, subject=subject, spacing=spacing, n_jobs=n_jobs)
+    sourcerer.calculate_source_models()
+
+    exit()
 
 # Load MEG files, filter, resample, concatenate
 # MEG files are expected to be maxfiltered + transpositioned

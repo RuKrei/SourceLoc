@@ -77,7 +77,10 @@ class RawAnatomyProcessor:
             print(f"Omitting hippocampal segmentation for subject {self.subject}, as it already exists")
     
     def _run_watershed(self):
-        mne.bem.make_watershed_bem(self.subject, self.FS_SUBJECTS_DIR, copy=True)
+        try:
+            mne.bem.make_watershed_bem(self.subject, self.FS_SUBJECTS_DIR, copy=True)
+        except Exception as e:
+            print(e)
 
     def run_anatomy_pipeline(self):
         self._dicom_to_nii()
@@ -86,13 +89,87 @@ class RawAnatomyProcessor:
         self._run_watershed()
       
 
-class HeadModeler:
+class SourceModeler:
     """ Generates desired head models.
         Expects to find subject of interest as processed
         with freesurfer in $SUBJECTS_DIR
     """
-    pass
+    def __init__(self, subjects_dir=None, subject=None, spacing="ico4", n_jobs=1):
+        self.subjects_dir = subjects_dir
+        self.subject = subject
+        self.fsrc = opj(self.subjects_dir, "..", "source_model")
+        self.spacing = spacing
+        self.n_jobs = n_jobs
+    
+    def _make_vol_source_space(self):
+        srcfilename = opj(self.fsrc, self.subject  + "-vol-src.fif")
+        if not os.path.isfile(srcfilename):
+            try:    
+                src_vol = mne.setup_volume_source_space(self.subject, pos=3.0, 
+                                                subjects_dir = self.subjects_dir, 
+                                                verbose=True)
+                mne.write_source_spaces(srcfilename, src_vol, overwrite=True, verbose=True)
+            except Exception as e:
+                print(f"Failed to setup volume source space for {self.subject} --> {e}")
+    
+    def _make_cortex_source_space(self):
+        srcfilename = opj(self.fsrc, self.subject  + "-" + self.spacing + "-src.fif")
+        if not os.path.isfile(srcfilename):
+            try:
+                src = mne.setup_source_space(self.subject, spacing = self.spacing, 
+                                                subjects_dir = self.subjects_dir, 
+                                                n_jobs=self.n_jobs, 
+                                                verbose=True)
+                mne.write_source_spaces(srcfilename, src, overwrite=True, verbose=True)
+            except Exception as e:
+                print(f"Failed to setup source space with spacing {spacing} \
+                        for {self.subject} --> {e}")
 
+
+    def _make_bem_solution(self):
+        bem_save_name = opj(self.fsrc, self.subject + "-single-shell-model")
+        if not os.path.isfile(bem_save_name):
+            try:
+                bem = mne.make_bem_model(self.subject, ico=4, 
+                                conductivity=[0.3],   
+                                subjects_dir=self.subjects_dir, verbose=True)
+                mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
+            except Exception as e:
+                print(f"Failed to setup single shell BEM model for {self.subject} --> {e}")
+        bem_sol_filename = opj(self.fsrc, self.subject + "-single-shell-BEM-sol.fif")
+        if not os.path.isfile(bem_sol_filename):
+            try:
+                bem = mne.read_bem_surfaces(bem_save_name)    
+                bem_sol = mne.make_bem_solution(bem)
+                mne.write_bem_solution(bem_sol_filename, bem_sol, overwrite=True)
+            except Exception as e:
+                print(f"Failed to calculate BEM solution (single-shell) for {self.subject} --> {e}")
+
+        # BEM Solutions - 3-layer-BEM
+        bem_save_name = opj(self.fsrc, self.subject + "-3-layer-BEM-model.fif")
+        if not os.path.isfile(bem_save_name):
+            try:
+                bem = mne.make_bem_model(self.subject, ico=4, 
+                                conductivity=[0.3, 0.006, 0.3],   
+                                subjects_dir=self.subjects_dir, verbose=True)
+                mne.write_bem_surfaces(bem_save_name, bem, overwrite=True) #, overwrite=True)
+            except Exception as e:
+                print(f"Failed to calculate 3-layer BEM model for {self.subject} --> {e}")
+        bem_sol_filename = opj(self.fsrc, self.subject + "-3-layer-BEM-sol.fif")
+        if not os.path.isfile(bem_sol_filename):
+            try:
+                bem = mne.read_bem_surfaces(bem_save_name)    
+                bem_sol = mne.make_bem_solution(bem)
+                mne.write_bem_solution(bem_sol_filename, bem_sol, overwrite=True)
+            except Exception as e:
+                print(f"Failed to calculate 3-layer BEM solution for {self.subject} --> {e}")
+                print("This is bad, please look into the freesurfer segmentation...")
+                print("Alternatively, you might be able to run the analysis with a single-shell-head-model (look into the configuration file")
+
+    def calculate_source_models(self):
+        self._make_vol_source_space()
+        self._make_cortex_source_space()
+        self._make_bem_solution()
 
 
 def main(inputfolder=None):
