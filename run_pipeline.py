@@ -173,7 +173,22 @@ def main():
     sourcerer.calculate_source_models()
 
 
-# Load MEG files, filter, resample, concatenate
+
+
+
+
+
+
+
+
+
+
+
+
+
+# To do:
+# Load MEG files, filter, resample, supress artifacts, create epochs and concatenate epochs
+# save as -epo.fif
 # MEG files are expected to be maxfiltered + transpositioned
 # --> _tsss_trans.fif
 
@@ -194,12 +209,52 @@ def main():
                         print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
                         event_file = None
                         event_dict = None
-                        raw = mne.io.read_raw(rawfile, preload=True, on_split_missing="ignore")
+                        raw = mne.io.read_raw(rawfile, preload=False, on_split_missing="ignore")
                     # preprocessing
                     raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
                                                 h_freq=h_freq, n_jobs=n_jobs)
                     raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
-                    # save
+
+                    
+                    
+                    # Artifacts        
+                    # ECG artifacts
+                    # It's smarter to supervise this step (--> look at the topomaps!)
+                    raw.load_data()
+                    try:
+                        ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
+                                                                          n_eeg=n_eeg, reject=None)
+                        # lets not do this now......
+                        raw.add_proj(ecg_projs, remove_existing=False)
+                        fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
+                        savename = os.path.join(dfc.fprep, "ECG_projs_Topomap.png")
+                        fig.savefig(savename)
+                    except Exception as e:
+                        print(e)
+                        print("ECG - Atrifact correction failed!")
+                    #EOG artifacts    
+                    # It's a bad idea to do this in an automated step
+                    try:
+                        eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
+                        #eog_evoked.apply_baseline((None, None))
+                        eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
+                                                                    n_jobs=n_jobs, reject=None)
+                        raw.add_proj(eog_projs, remove_existing=False) # --> don't do this in the early stages - see documentation
+                        figs = eog_evoked.plot_joint(show=False)
+                        for idx, fig in enumerate(figs):
+                            savename = os.path.join(dfc.fprep, "EOG Topomap_" + str(idx) + ".png")
+                            fig.savefig(savename)
+                    except Exception as e:
+                        print(e)
+                        print("EOG - Atrifact correction failed!")
+                    raw.apply_proj()
+                    
+                    
+                    
+                    
+                    
+                    
+                    # save raw
                     raw.save(rawname, overwrite=True)
                     del(raw)
     # concatenate filtered and resampled files
@@ -390,37 +445,7 @@ def main():
 
     """
 
-# Artifacts        
-    # ECG artifacts
-    # It's smarter to supervise this step (--> look at the topomaps!)
-    raw.load_data()
-    try:
-        ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
-                                                          n_eeg=n_eeg, reject=None)
-        # lets not do this now......
-        raw.add_proj(ecg_projs, remove_existing=False)
-        fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
-        savename = os.path.join(dfc.fprep, "ECG_projs_Topomap.png")
-        fig.savefig(savename)
-    except Exception as e:
-        print(e)
-        print("ECG - Atrifact correction failed!")
-    #EOG artifacts    
-    # It's a bad idea to do this in an automated step
-    try:
-        eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
-        #eog_evoked.apply_baseline((None, None))
-        eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
-                                                    n_jobs=n_jobs, reject=None)
-        raw.add_proj(eog_projs, remove_existing=False) # --> don't do this in the early stages - see documentation
-        figs = eog_evoked.plot_joint(show=False)
-        for idx, fig in enumerate(figs):
-            savename = os.path.join(dfc.fprep, "EOG Topomap_" + str(idx) + ".png")
-            fig.savefig(savename)
-    except Exception as e:
-        print(e)
-        print("EOG - Atrifact correction failed!")
-    raw.apply_proj()
+
 
         
     """    
