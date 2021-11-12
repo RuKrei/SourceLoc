@@ -24,13 +24,13 @@ import numpy as np
 ####################################################################
 ####################################################################
 # configuration
-#bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
-#extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
-#input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
+bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
+extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
+input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
 
-bids_root = "/home/idrael/playground/BIDS_root"
-extras_directory = "/home/idrael/playground/extras"
-input_folder = "/home/idrael/playground/input_folder"
+#bids_root = "/home/idrael/playground/BIDS_root"
+#extras_directory = "/home/idrael/playground/extras"
+#input_folder = "/home/idrael/playground/input_folder"
 
 openmp = n_jobs = 8
 
@@ -173,29 +173,12 @@ def main():
     sourcerer.calculate_source_models()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# To do:
-# Load MEG files, filter, resample, supress artifacts, create epochs and concatenate epochs
-# save as -epo.fif
-# MEG files are expected to be maxfiltered + transpositioned
-# --> _tsss_trans.fif
-
+# process raw fifs
     # parse list of appropriate raws
     raws = glob.glob(input_folder + "/*.fif")
     raws = [f for f in raws if ject in f]
     print(f"The following raw files were found:\n{raws}")
+    all_epochs = dict()
     prepper = u.RawPreprocessor()
     for run, rawfile in enumerate(raws):
         if "tsss" in rawfile and ject in rawfile:
@@ -203,8 +186,7 @@ def main():
                 rawname = rawfile.strip(".fif") + "_prep.fif"
                 if not os.path.isfile(rawname) and not "_prep" in rawfile:  # --> if this has not been done already
                     try:
-                        raw, event_file, event_dict = prepper.combine_raw_and_eve(rawfile, run=run)  
-                        event_file = event_file.to_numpy()  
+                        raw, all_epochs[run] = prepper.combine_raw_and_eve(rawfile, run=run)
                     except:  # this fails if no Event-file exists, or if it is corrupted
                         print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
                         event_file = None
@@ -213,9 +195,8 @@ def main():
                     # preprocessing
                     raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
                                                 h_freq=h_freq, n_jobs=n_jobs)
-                    raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+                    raw = prepper.resample_raw(raw, events=event_file, s_freq=s_freq, n_jobs=n_jobs)
 
-                    
                     
                     # Artifacts        
                     # ECG artifacts
@@ -247,16 +228,24 @@ def main():
                     except Exception as e:
                         print(e)
                         print("EOG - Atrifact correction failed!")
-                    raw.apply_proj()
-                    
-                    
-                    
-                    
-                    
-                    
-                    # save raw
+
+                    # save raw, store projs
+                    all_projs = raw.info["projs"]
                     raw.save(rawname, overwrite=True)
                     del(raw)
+    
+    # concatenate epochs
+    concat_epochs = mne.concatenate_epochs([all_epochs[r] for r in all_epochs.keys()])
+    concat_epochs.add_proj(all_projs, remove_existing=True)
+    concat_epochs.apply_proj()
+    epo_filename = opj(os.path.dirname(raws[0]), str(subject) + "_epo.fif")
+    print(f"Saving concatenated rawfile as {epo_filename}")
+    concat_epochs.save(epo_filename)
+    
+    exit()
+    
+    
+    
     # concatenate filtered and resampled files
     raws = glob.glob(input_folder + "/*.fif")
     raws = [f for f in raws if ject in f]
@@ -266,6 +255,7 @@ def main():
     if not os.path.isfile(concatname):
         for r in raws:
             all_raws[r] = mne.io.read_raw(r, preload=False)
+            all_raws[r].del_proj()
         print(f"\n\n\n\nConcatenating files: {raws}")
         try:
             #raw = mne.concatenate_raws(list(all_raws[k] for k in all_raws.keys()))
@@ -277,8 +267,12 @@ def main():
             #print("Loading only first raw file!")
             #raw = mne.io.read_raw(raws[0])
         concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
+        raw.add_proj(all_projs, remove_existing=True)
+        raw.apply_proj()
         print(f"Saving concatenated rawfile as {concatname}")
         raw.save(concatname)
+    
+
 
     # Save in BIDS format
     derivatives_root = opj(bids_root, "derivatives")
@@ -308,172 +302,6 @@ def main():
                             authors="Rudi Kreidenhuber", 
                             overwrite=True)
 
-
-    """
-    
-    # files are processed (Spike-Selection, Maxgfilter), so they should not 
-    # be stored at BIDS-root anymore
-    all_raws = dict()
-    for run, rawfile in enumerate(raws):
-        run +=1
-        if "tsss" in rawfile and ject in rawfile:
-            # --> search for matching eventfile and combine
-                try:
-                    raw, event_file, event_dict = prepper.combine_raw_and_eve(rawfile, run=run)  
-                    event_file = event_file.to_numpy()  
-                except:  # this fails if no Event-file exists, or if it is corrupted
-                    print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
-                    event_file = None
-                    event_dict = None
-                    raw = mne.io.read_raw(rawfile, preload=True)
-                #raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
-                #                            h_freq=h_freq, n_jobs=n_jobs)
-                raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
-                all_raws[run] = raw.copy()
-                bids_path.update(root=derivatives_root, processing="Prepared", run=run)
-                modfile = rawfile.split(".fif")[0] + "-prep.fif"
-                raw.save(modfile, overwrite=True)
-                raw = mne.io.read_raw(modfile, preload=False)
-                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file, overwrite=True)
-
-
-    bids_derivatives = BIDSPath(subject=ject, 
-                    datatype="meg", 
-                    session="resting", 
-                    task="resting", 
-                    root=derivatives_root, 
-                    processing="Concat", 
-                    suffix="meg")
-    raw.save(modfile, overwrite=True)
-    raw = mne.io.read_raw(modfile, preload=False)
-    write_raw_bids(raw, bids_derivatives, overwrite=True)
-    del all_raws
-
-
-#######################################################################################
-#######################################################################################
-#######################################################################################
-# -->   Here would be the place to filter + concatenate input files and save one file
-#       to be processed further
-#######################################################################################
-#######################################################################################
-#######################################################################################
-    
-
-
-
-
-
-# .fif data preparations
-# --> To do: concatenate, if multiple files
-# Be less confusing with file loading logic
-    # load all files
-    raw = False
-    bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
-                        datatype="meg", 
-                        session="resting", 
-                        task="resting", 
-                        run="01",
-                        root=derivatives_root,
-                        suffix="meg",
-                        extension="fif") 
-    bids_derivatives = bids_derivatives.update(processing="tsssTransEve")
-    all_raws = bids_derivatives.match() 
-    print(f"all_raws according to bids: {all_raws}")
-    try:
-        raw = read_raw_bids(bids_derivatives)
-    except Exception as e:
-        print(f"Couldn't load BIDS fif with events: {e}")
-        bids_derivatives = bids_derivatives.update(processing="tsssTrans")
-        all_raws = bids_derivatives.match() 
-        try:
-            raw = read_raw_bids(bids_derivatives)
-        except Exception as e:
-            print(f"Couldn't load any BIDS fif: {e}")
-    if not raw:
-        meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
-        concat_fif = meg_dir + splitter + "*Concat*.fif"
-        all_raws = glob.glob(concat_fif)
-        if all_raws == []:
-            tsssTrans_fif = meg_dir + splitter + "*tsssTrans*.fif"
-            all_raws = glob.glob(tsssTrans_fif)
-        print(f"\n\nThe following files are being processed: {all_raws}\n\n")
-    
-    # Check, if this has already been done
-    meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
-    eve_fif = meg_dir + splitter + "*tsssTransEve*.fif"
-    eve_fif = glob.glob(eve_fif)
-    noeve_fif = meg_dir + splitter + "*tsssTransNo*.fif"
-    noeve_fif = glob.glob(noeve_fif)   
-    if (eve_fif == [] and noeve_fif == []):
-        # concatenate raws, if there is more than one - because why not.
-        if (len(all_raws) > 1):
-            try:
-                raws = dict()
-                for num, rawfile in enumerate(all_raws):
-                    raws[num] = mne.io.read_raw(rawfile)
-                raw = mne.concatenate_raws(list(raws.values()))
-                print("Rawfiles have been concatenated....")
-                bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
-                                datatype="meg", 
-                                session="resting", 
-                                task="resting", 
-                                root=derivatives_root, 
-                                processing="tsssTransEveConcat", 
-                                suffix="meg")
-                write_raw_bids(raw, bids_derivatives, overwrite=True)
-            except Exception as e:
-                print(f"Failed trying to concatenate multiple raw files --> {e}")
-                print("Loading only first raw file!")
-                raw = mne.io.read_raw(all_raws[0])
-        else:     
-        # raw = read_raw_bids(bids_derivatives)   # this fails again, using bare MNE to load data file
-            if not raw:
-                raw = mne.io.read_raw(all_raws[0])
-#
-        # filter
-        #raw = prepper.filter_raw(raw, l_freq=l_freq, h_freq=h_freq, n_jobs=n_jobs)
-        # resample
-        print(f"Resample to {s_freq}")
-        print(f"Original sampling frequency was: {raw.info['sfreq']}")
-        raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
-        
-        
-
-
-
-
-    """
-
-
-
-        
-    """    
-        
-        # save - if events have been found
-        events, event_ids = mne.events_from_annotations(raw)
-        bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
-                                datatype="meg", 
-                                session="resting", 
-                                task="resting", 
-                                root=derivatives_root, 
-                                processing="tsssTransEvePreproc", 
-                                suffix="meg")  
-        if len(events) > 0:
-            raw_temp = os.path.join(fprep, "temp.fif")
-            raw.save(raw_temp, overwrite=True)
-            raw = mne.io.read_raw(raw_temp, preload=False)                    
-            write_raw_bids(raw, bids_derivatives, overwrite=True)
-        else:
-        # save - if no events
-            raw_temp = os.path.join(fprep, "temp.fif")
-            raw.save(raw_temp, overwrite=True)
-            bids_derivatives.update(processing="tsssTransNoEvePreproc", run=run)   
-            raw = mne.io.read_raw(raw_temp, preload=False)                    
-            write_raw_bids(raw, bids_derivatives, overwrite=True)
-    else:
-        print("Omitting preprocessing steps, as preprocessed file has been found.")
-    """
 
 # Coregistration --> this doesn't work with WSLg - from here on
 # run on windows, if you are on a windows machine
@@ -604,8 +432,8 @@ def main():
     #raw = read_raw_bids(all_raws[0])
     
 
-    bids_derivatives.update(processing="finalEpochs", session="99")
-    fname = os.path.join(derivatives_root, subject, "ses-resting", "meg", bids_derivatives.basename)
+    bids_path.update(processing="finalEpochs", session="99")
+    fname = os.path.join(derivatives_root, subject, "ses-resting", "meg", bids_path.basename)
     fname = fname + ".fif"
     raw.save(fname, overwrite=True)
     events, event_ids = mne.events_from_annotations(raw)
@@ -613,7 +441,7 @@ def main():
     epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, 
                         baseline=(-1.5,-1), on_missing = "ignore",
                         event_repeated="merge")
-    noise_cov_file = opj(spikes, "Spikes_noise_covariance.pkl")
+    noise_cov_file = opj(dfc.spikes, "Spikes_noise_covariance.pkl")
     if not os.path.isfile(noise_cov_file):
         noise_cov = mne.compute_covariance(epochs, tmax=-1., 
                                     method='auto',
@@ -639,16 +467,16 @@ def main():
             try:
                 print(f"\n\n\nNow processing event: {event}")
                 e = epochs[eventname].load_data().average()
-                e_folder = os.path.join(spikes, eventname)
-                cp_folder = os.path.join(spikes, eventname, "custom_pics")
-                cts_folder = os.path.join(spikes, eventname, "custom_time_series")
-                gp_folder = os.path.join(spikes, eventname, "generic_pics")
+                e_folder = os.path.join(dfc.spikes, eventname)
+                cp_folder = os.path.join(dfc.spikes, eventname, "custom_pics")
+                cts_folder = os.path.join(dfc.spikes, eventname, "custom_time_series")
+                gp_folder = os.path.join(dfc.spikes, eventname, "generic_pics")
                 folders = [e_folder, cp_folder, cts_folder, gp_folder]
                 if not os.path.isdir(e_folder):
                     for f in folders:
                         os.mkdir(f)
                 src = mne.read_source_spaces(srcfilename)
-                bem_sol = opj(fsrc, subject + "-3-layer-BEM-sol.fif")
+                bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
 
                 fwd = mne.make_forward_solution(e.info, src=src, bem=bem_sol,
                                             trans=transfile, 
@@ -664,7 +492,7 @@ def main():
                     if m == 'dSPM':
                         stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
                                     method='dSPM', pick_ori='vector')
-                        surfer_kwargs = dict(hemi='split', subjects_dir=fanat,
+                        surfer_kwargs = dict(hemi='split', subjects_dir=dfc.fanat,
                                     clim=dict(kind='percent', lims=[90, 96, 99.85]),
                                     views=['lat', 'med'], 
                                     colorbar=True,
@@ -682,7 +510,7 @@ def main():
                     else:
                         stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
                                     method=m, pick_ori=None)
-                        surfer_kwargs = dict(hemi='split', subjects_dir=fanat,
+                        surfer_kwargs = dict(hemi='split', subjects_dir=dfc.fanat,
                                     clim=dict(kind='percent', lims=[90, 96, 99.85]),
                                     views=['lat', 'med'], 
                                     colorbar=True,
@@ -721,9 +549,9 @@ def main():
                     best_idx = np.argmax(ecd.gof)
                     best_time = ecd.times[best_idx]
                     trans = mne.read_trans(transfile)
-                    mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subject, subjects_dir=fanat)
-                    t1_file_name = os.path.join(fanat, subject, 'mri', 'T1.mgz')
-                    stoptime = str(abs(int(stop*1000)))
+                    mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subject, subjects_dir=dfc.fanat)
+                    t1_file_name = os.path.join(dfc.fanat, subject, 'mri', 'T1.mgz')
+                    stoptime = str(abs(int(stop*int(raw.info["sfreq"]))))
                     if stoptime == "5":
                         stoptime = "05"
                     title = str(eventname + ' - ECD @ minus ' + stoptime + ' ms')
@@ -731,7 +559,7 @@ def main():
                     t1_f_name_pic = ('img_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
                     t1_f_name_pic = os.path.join(e_folder, "generic_pics", t1_f_name_pic)
                     t1_fig.savefig(t1_f_name_pic)
-                    fig_3d = ecd.plot_locations(trans, subject, fanat, mode="orthoview")
+                    fig_3d = ecd.plot_locations(trans, subject, dfc.fanat, mode="orthoview")
                     fig_3d_pic = ('img_3d_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
                     fig_3d_pic = os.path.join(e_folder, "generic_pics", fig_3d_pic)
                     fig_3d.savefig(fig_3d_pic)
@@ -744,6 +572,9 @@ if __name__ == '__main__':
     main()
 
 
+
+
+
 """
 To do:
     update auto-recon-all to also take care of head-model (--> watershed uses freesurfer)
@@ -752,4 +583,150 @@ To do:
 
     fix filtering, resampling
     
-"""
+
+    
+    # files are processed (Spike-Selection, Maxgfilter), so they should not 
+    # be stored at BIDS-root anymore
+    all_raws = dict()
+    for run, rawfile in enumerate(raws):
+        run +=1
+        if "tsss" in rawfile and ject in rawfile:
+            # --> search for matching eventfile and combine
+                try:
+                    raw, event_file, event_dict = prepper.combine_raw_and_eve(rawfile, run=run)  
+                    event_file = event_file.to_numpy()  
+                except:  # this fails if no Event-file exists, or if it is corrupted
+                    print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
+                    event_file = None
+                    event_dict = None
+                    raw = mne.io.read_raw(rawfile, preload=True)
+                #raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
+                #                            h_freq=h_freq, n_jobs=n_jobs)
+                raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+                all_raws[run] = raw.copy()
+                bids_path.update(root=derivatives_root, processing="Prepared", run=run)
+                modfile = rawfile.split(".fif")[0] + "-prep.fif"
+                raw.save(modfile, overwrite=True)
+                raw = mne.io.read_raw(modfile, preload=False)
+                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file, overwrite=True)
+
+
+
+
+
+#######################################################################################
+#######################################################################################
+#######################################################################################
+# -->   Here would be the place to filter + concatenate input files and save one file
+#       to be processed further
+#######################################################################################
+#######################################################################################
+#######################################################################################
+    
+
+
+
+
+
+# .fif data preparations
+# --> To do: concatenate, if multiple files
+# Be less confusing with file loading logic
+    # load all files
+    raw = False
+    bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
+                        datatype="meg", 
+                        session="resting", 
+                        task="resting", 
+                        run="01",
+                        root=derivatives_root,
+                        suffix="meg",
+                        extension="fif") 
+    bids_derivatives = bids_derivatives.update(processing="tsssTransEve")
+    all_raws = bids_derivatives.match() 
+    print(f"all_raws according to bids: {all_raws}")
+    try:
+        raw = read_raw_bids(bids_derivatives)
+    except Exception as e:
+        print(f"Couldn't load BIDS fif with events: {e}")
+        bids_derivatives = bids_derivatives.update(processing="tsssTrans")
+        all_raws = bids_derivatives.match() 
+        try:
+            raw = read_raw_bids(bids_derivatives)
+        except Exception as e:
+            print(f"Couldn't load any BIDS fif: {e}")
+    if not raw:
+        meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
+        concat_fif = meg_dir + splitter + "*Concat*.fif"
+        all_raws = glob.glob(concat_fif)
+        if all_raws == []:
+            tsssTrans_fif = meg_dir + splitter + "*tsssTrans*.fif"
+            all_raws = glob.glob(tsssTrans_fif)
+        print(f"\n\nThe following files are being processed: {all_raws}\n\n")
+    
+    # Check, if this has already been done
+    meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
+    eve_fif = meg_dir + splitter + "*tsssTransEve*.fif"
+    eve_fif = glob.glob(eve_fif)
+    noeve_fif = meg_dir + splitter + "*tsssTransNo*.fif"
+    noeve_fif = glob.glob(noeve_fif)   
+    if (eve_fif == [] and noeve_fif == []):
+        # concatenate raws, if there is more than one - because why not.
+        if (len(all_raws) > 1):
+            try:
+                raws = dict()
+                for num, rawfile in enumerate(all_raws):
+                    raws[num] = mne.io.read_raw(rawfile)
+                raw = mne.concatenate_raws(list(raws.values()))
+                print("Rawfiles have been concatenated....")
+                bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
+                                datatype="meg", 
+                                session="resting", 
+                                task="resting", 
+                                root=derivatives_root, 
+                                processing="tsssTransEveConcat", 
+                                suffix="meg")
+                write_raw_bids(raw, bids_derivatives, overwrite=True)
+            except Exception as e:
+                print(f"Failed trying to concatenate multiple raw files --> {e}")
+                print("Loading only first raw file!")
+                raw = mne.io.read_raw(all_raws[0])
+        else:     
+        # raw = read_raw_bids(bids_derivatives)   # this fails again, using bare MNE to load data file
+            if not raw:
+                raw = mne.io.read_raw(all_raws[0])
+#
+        # filter
+        #raw = prepper.filter_raw(raw, l_freq=l_freq, h_freq=h_freq, n_jobs=n_jobs)
+        # resample
+        print(f"Resample to {s_freq}")
+        print(f"Original sampling frequency was: {raw.info['sfreq']}")
+        raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+        
+        
+
+
+        
+        # save - if events have been found
+        events, event_ids = mne.events_from_annotations(raw)
+        bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
+                                datatype="meg", 
+                                session="resting", 
+                                task="resting", 
+                                root=derivatives_root, 
+                                processing="tsssTransEvePreproc", 
+                                suffix="meg")  
+        if len(events) > 0:
+            raw_temp = os.path.join(fprep, "temp.fif")
+            raw.save(raw_temp, overwrite=True)
+            raw = mne.io.read_raw(raw_temp, preload=False)                    
+            write_raw_bids(raw, bids_derivatives, overwrite=True)
+        else:
+        # save - if no events
+            raw_temp = os.path.join(fprep, "temp.fif")
+            raw.save(raw_temp, overwrite=True)
+            bids_derivatives.update(processing="tsssTransNoEvePreproc", run=run)   
+            raw = mne.io.read_raw(raw_temp, preload=False)                    
+            write_raw_bids(raw, bids_derivatives, overwrite=True)
+    else:
+        print("Omitting preprocessing steps, as preprocessed file has been found.")
+    """

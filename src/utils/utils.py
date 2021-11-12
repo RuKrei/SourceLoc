@@ -211,10 +211,11 @@ class RawPreprocessor():
         print("Filtering complete!")
         return raw
     
-    def resample_raw(self, raw, s_freq=300, n_jobs=1):
+    def resample_raw(self, raw, s_freq=300, events=None, n_jobs=1):
         print(f"Resampling to {s_freq} Hz")
-        raw.resample(s_freq, npad='auto', n_jobs=n_jobs)
-        print("Resamling complete!")
+        raw = raw.resample(s_freq, npad='auto', events=events, n_jobs=n_jobs)
+        #raw.add_events(events)
+        print("Resampling complete!")
         return raw
 
     def combine_raw_and_eve(self, rawfile=None, eve=None, run=1):
@@ -226,7 +227,9 @@ class RawPreprocessor():
             raw = mne.io.read_raw(rawfile, preload=True, on_split_missing="ignore")
             event_file, event_dict = self.transform_eventfile(eve_name)
             raw.add_events(event_file)
-            return raw
+            epochs = mne.Epochs(raw, events=event_file, event_id=event_dict.keys(), tmin=-1.5, tmax=1, 
+                                                baseline=(-1.5,-1), on_missing = "ignore", event_repeated="merge")
+            return raw, epochs
 
 
 
