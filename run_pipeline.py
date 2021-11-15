@@ -174,138 +174,138 @@ def main():
 
 
 
-
-
-
-
-
 # To do:
-# - create epochs object with spikes and concatenate epochs
-# - do frequency analysis (+ resting state connectivity on one
-#       input file)
-
+# save epochs with event-names!
 
 
 # process raw fifs
-    # parse list of appropriate raws
     raws = glob.glob(input_folder + "/*.fif")
     raws = [f for f in raws if ject in f]
-    print(f"The following raw files were found:\n{raws}")
-    prepper = u.RawPreprocessor()
-    for run, rawfile in enumerate(raws):
-        if "tsss" in rawfile and ject in rawfile:
-            # --> search for matching eventfile and combine
-                rawname = rawfile.strip(".fif") + "_prep.fif"
-                #if not os.path.isfile(rawname) and not "_prep" in rawfile:  # --> if this has not been done already
-                if not "_prep" in rawfile:    
-                    # epochs
-                    epochs = prepper.raw_to_epoch(rawfile)
-                    if epochs is not None:
-                        epo_filename = rawfile.strip(".fif") + "-epo.fif"
-                        epochs.save(epo_filename, overwrite=True)
-                    # preprocessing
-                    raw = mne.io.read_raw(rawfile, preload=False, on_split_missing="ignore")
-                    raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
-                                                h_freq=h_freq, n_jobs=n_jobs)
-                    raw = prepper.resample_raw(raw, events=event_file, s_freq=s_freq, n_jobs=n_jobs)
-#                    
-                    # Artifacts        
-                    # ECG artifacts
-                    # It's smarter to supervise this step (--> look at the topomaps!)
-                    raw.load_data()
-                    try:
-                        ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
-                                                                          n_eeg=n_eeg, reject=None)
-                        # lets not do this now......
-                        raw.add_proj(ecg_projs, remove_existing=False)
-                        fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
-                        savename = os.path.join(dfc.fprep, "ECG_projs_Topomap.png")
-                        fig.savefig(savename)
-                    except Exception as e:
-                        print(e)
-                        print("ECG - Atrifact correction failed!")
-                    #EOG artifacts    
-                    # It's a bad idea to do this in an automated step
-                    try:
-                        eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
-                        #eog_evoked.apply_baseline((None, None))
-                        eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
-                                                                    n_jobs=n_jobs, reject=None)
-                        raw.add_proj(eog_projs, remove_existing=False) # --> don't do this in the early stages - see documentation
-                        figs = eog_evoked.plot_joint(show=False)
-                        for idx, fig in enumerate(figs):
-                            savename = os.path.join(dfc.fprep, "EOG Topomap_" + str(idx) + ".png")
-                            fig.savefig(savename)
-                    except Exception as e:
-                        print(e)
-                        print("EOG - Atrifact correction failed!")
-                    # save raw, store projs
-                    all_projs = raw.info["projs"]
-                    raw.save(rawname, overwrite=True)
-                    del(raw)
-    
-    # concatenate epochs
-    epoch_files = glob.glob(input_folder + "/*-epo.fif")
-    epoch_files = [f for f in epoch_files if ject in f]
-    all_epochs = dict()
-    for f in epoch_files:
-        all_epochs[f] = mne.read_epochs(f)
-    concat_epochs = mne.concatenate_epochs([all_epochs[f] for f in epoch_files])
-    concat_epochs.add_proj(all_projs, remove_existing=True)
-    concat_epochs.apply_proj()
     epo_filename = opj(dfc.spikes, str(subject) + "-epo.fif")
-    print(f"Saving concatenated rawfile as {epo_filename}")
-    concat_epochs.save(epo_filename)
-    
-    exit()
-    
-    
-    
-    # concatenate filtered and resampled files
-    raws = glob.glob(input_folder + "/*.fif")
-    raws = [f for f in raws if ject in f]
-    raws = [f for f in raws if "_prep" in f]
-    all_raws = dict()
     concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
-    if not os.path.isfile(concatname):
-        for r in raws:
-            all_raws[r] = mne.io.read_raw(r, preload=False)
-            all_raws[r].del_proj()
-        print(f"\n\n\n\nConcatenating files: {raws}")
-        try:
-            #raw = mne.concatenate_raws(list(all_raws[k] for k in all_raws.keys()))
-            raw = mne.concatenate_raws([all_raws[r] for r in all_raws.keys()])
-            print("Rawfiles have been concatenated....")
 
-        except Exception as e:
-            print(f"Failed trying to concatenate raw file\n {r} --> {e}")
-            #print("Loading only first raw file!")
-            #raw = mne.io.read_raw(raws[0])
+    def raw_processing_already_done():
+        r = os.path.isfile(concatname)
+        c = os.path.isfile(epo_filename)
+        return r and c
+
+
+    if not raw_processing_already_done():
+        # parse list of appropriate raws
+        print(f"The following raw files were found:\n{raws}")
+        prepper = u.RawPreprocessor()
+        for run, rawfile in enumerate(raws):
+            if "tsss" in rawfile and ject in rawfile and not "-epo" in rawfile:
+                # --> search for matching eventfile and combine
+                    rawname = rawfile.strip(".fif") + "_prep.fif"
+                    #if not os.path.isfile(rawname) and not "_prep" in rawfile:  # --> if this has not been done already
+                    if not "_prep" in rawfile:    
+                        # epochs
+                        epochs = prepper.raw_to_epoch(rawfile)
+                        if epochs is not None:
+                            epo_filename = rawfile.strip(".fif") + "-epo.fif"
+                            epochs.save(epo_filename, overwrite=True)
+                        # preprocessing
+                        raw = mne.io.read_raw(rawfile, preload=False, on_split_missing="ignore")
+                        raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
+                                                    h_freq=h_freq, n_jobs=n_jobs)
+                        raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+#                        
+                        # Artifacts        
+                        # ECG artifacts
+                        # It's smarter to supervise this step (--> look at the topomaps!)
+                        raw.load_data()
+                        try:
+                            ecg_projs, _ = mne.preprocessing.compute_proj_ecg(raw, n_grad=n_grad, n_mag=n_mag, 
+                                                                              n_eeg=n_eeg, reject=None)
+                            # lets not do this now......
+                            raw.add_proj(ecg_projs, remove_existing=False)
+                            fig = mne.viz.plot_projs_topomap(ecg_projs, info=raw.info, show=False)
+                            savename = os.path.join(dfc.fprep, "ECG_projs_Topomap.png")
+                            fig.savefig(savename)
+                        except Exception as e:
+                            print(e)
+                            print("ECG - Atrifact correction failed!")
+                        #EOG artifacts    
+                        # It's a bad idea to do this in an automated step
+                        try:
+                            eog_evoked = mne.preprocessing.create_eog_epochs(raw).average()
+                            #eog_evoked.apply_baseline((None, None))
+                            eog_projs, _ = mne.preprocessing.compute_proj_eog(raw, n_grad=n_grad, n_mag=n_mag, n_eeg=n_eeg, 
+                                                                        n_jobs=n_jobs, reject=None)
+                            raw.add_proj(eog_projs, remove_existing=False) # --> don't do this in the early stages - see documentation
+                            figs = eog_evoked.plot_joint(show=False)
+                            for idx, fig in enumerate(figs):
+                                savename = os.path.join(dfc.fprep, "EOG Topomap_" + str(idx) + ".png")
+                                fig.savefig(savename)
+                        except Exception as e:
+                            print(e)
+                            print("EOG - Atrifact correction failed!")
+                        # save raw, store projs
+                        all_projs = raw.info["projs"]
+                        raw.save(rawname, overwrite=True)
+                        del(raw)
+
+        # concatenate epochs
+        epoch_files = glob.glob(input_folder + "/*-epo.fif")
+        epoch_files = [f for f in epoch_files if ject in f]
+        all_epochs = dict()
+        for f in epoch_files:
+            all_epochs[f] = mne.read_epochs(f)
+        concat_epochs = mne.concatenate_epochs([all_epochs[f] for f in epoch_files])
+        concat_epochs.add_proj(all_projs, remove_existing=True)
+        concat_epochs.apply_proj()
+        print(f"Saving concatenated rawfile as {epo_filename}")
+        concat_epochs.save(epo_filename)
+
+
+
+        # concatenate filtered and resampled files
+        raws = glob.glob(input_folder + "/*.fif")
+        raws = [f for f in raws if ject in f]
+        raws = [f for f in raws if "_prep" in f]
+        all_raws = dict()
         concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
-        raw.add_proj(all_projs, remove_existing=True)
-        raw.apply_proj()
-        print(f"Saving concatenated rawfile as {concatname}")
-        raw.save(concatname)
+        if not os.path.isfile(concatname):
+            for r in raws:
+                all_raws[r] = mne.io.read_raw(r, preload=False)
+                all_raws[r].del_proj()
+            print(f"\n\n\n\nConcatenating files: {raws}")
+            try:
+                raw = mne.concatenate_raws([all_raws[r] for r in all_raws.keys()])
+                print("Rawfiles have been concatenated....")
+            except Exception as e:
+                print(f"Failed trying to concatenate raw file\n {r} --> {e}")
+                #print("Loading only first raw file!")
+                #raw = mne.io.read_raw(raws[0])
+            raw.add_proj(all_projs, remove_existing=True)
+            raw.apply_proj()
+            print(f"Saving concatenated rawfile as {concatname}")
+            raw.save(concatname)
+
+
+
+        # Save in BIDS format
+        derivatives_root = opj(bids_root, "derivatives")
+        # meg
+        bids_path = BIDSPath(subject=ject, session="resting", task="resting", 
+                               root=derivatives_root, processing="concat")
+        raw = mne.io.read_raw(concatname, preload=False)
+        write_raw_bids(raw, bids_path, overwrite=True)
     
-
-
-    # Save in BIDS format
-    derivatives_root = opj(bids_root, "derivatives")
-    # meg
-    bids_path = BIDSPath(subject=ject, session="resting", task="resting", 
-                           root=derivatives_root, processing="concat")
-    raw = mne.io.read_raw(concatname, preload=False)
-    write_raw_bids(raw, bids_path, overwrite=True)
     # anatomy  
 #    fbase = os.path.join(bids_root, "derivatives", "sub-" + ject)
+    derivatives_root = opj(bids_root, "derivatives")
+        # meg
+    bids_path = BIDSPath(subject=ject, session="resting", task="resting", 
+                               root=bids_root, processing="concat")
     nii = glob.glob(opj(input_folder, ject, "*.nii*"))
-    bids_path.update(root=bids_root)
+
     try:
         for n in nii:      
             write_anat(n, bids_path=bids_path, overwrite=True)
     except Exception as e:
         print(e)
-    bids_path.update(root=bids_root)
 
 
     # Create Dataset
@@ -446,19 +446,11 @@ def main():
     #all_raws = glob.glob(target_dir + "*tsssTransEve_meg.fif")    # should already be concatenated
     #raw = read_raw_bids(all_raws[0])
     
-
-    bids_path.update(processing="finalEpochs", session="99")
-    fname = os.path.join(derivatives_root, subject, "ses-resting", "meg", bids_path.basename)
-    fname = fname + ".fif"
-    raw.save(fname, overwrite=True)
-    events, event_ids = mne.events_from_annotations(raw)
-
-    epochs = mne.Epochs(raw, events=events, event_id=event_ids, tmin=-1.5, tmax=1, 
-                        baseline=(-1.5,-1), on_missing = "ignore",
-                        event_repeated="merge")
+    epo_filename = opj(dfc.spikes, str(subject) + "-epo.fif")
+    concat_epochs = mne.read_epochs(epo_filename)
     noise_cov_file = opj(dfc.spikes, "Spikes_noise_covariance.pkl")
     if not os.path.isfile(noise_cov_file):
-        noise_cov = mne.compute_covariance(epochs, tmax=-1., 
+        noise_cov = mne.compute_covariance(concat_epochs, tmax=-1., 
                                     method='auto',
                                     n_jobs=n_jobs,
                                     rank="full")
@@ -467,7 +459,7 @@ def main():
         with open(noise_cov_file, 'rb') as f:
             noise_cov = pickle.load(f)
     
-    #data_cov = mne.compute_covariance(epochs,
+    #data_cov = mne.compute_covariance(concat_epochs,
     #                                tmin=-0.5, 
     #                                tmax=0.3, 
     #                                method='auto',
@@ -481,7 +473,7 @@ def main():
         else:
             try:
                 print(f"\n\n\nNow processing event: {event}")
-                e = epochs[eventname].load_data().average()
+                e = concat_epochs[eventname].load_data().average()
                 e_folder = os.path.join(dfc.spikes, eventname)
                 cp_folder = os.path.join(dfc.spikes, eventname, "custom_pics")
                 cts_folder = os.path.join(dfc.spikes, eventname, "custom_time_series")
