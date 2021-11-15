@@ -218,7 +218,7 @@ class RawPreprocessor():
         print("Resampling complete!")
         return raw
 
-    def combine_raw_and_eve(self, rawfile=None, eve=None, run=1):
+    def combine_raw_and_eve(self, rawfile=None, run=1):
         eve_name = rawfile.split(".fif")[0] + "_Events.csv"
         if not os.path.isfile(eve_name):
             eve_name = rawfile.split(".fif")[0] + "_Events.txt"
@@ -227,9 +227,29 @@ class RawPreprocessor():
             raw = mne.io.read_raw(rawfile, preload=True, on_split_missing="ignore")
             event_file, event_dict = self.transform_eventfile(eve_name)
             raw.add_events(event_file)
-            epochs = mne.Epochs(raw, events=event_file, event_id=event_dict.keys(), tmin=-1.5, tmax=1, 
-                                                baseline=(-1.5,-1), on_missing = "ignore", event_repeated="merge")
-            return raw, epochs
+            print(f"raw.info @ utils: {raw.info}")
+            return raw
+    
+    def raw_to_epoch(self, rawfile=None):
+        eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+        if not os.path.isfile(eve_name):
+            eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+        if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+            try:
+                print(f"\n\nNow epoching events from {rawfile}\n\n")
+                event_file, event_dict = self.transform_eventfile(eve_name)
+                print(f"\n\nevent_file: {event_file}")
+                print(f"\n\nevent_dict: {event_dict}")
+                raw = mne.io.read_raw(rawfile)
+                epochs = mne.Epochs(raw, events=event_file,
+                                        event_id=event_dict, 
+                                        tmin=-1.5, tmax=1, 
+                                        baseline=(-1.5,-1), on_missing = "ignore", 
+                                        event_repeated="merge")
+                del(raw)
+                return epochs
+            except Exception as e:
+                print(f"failed at returning an epochs object for: {rawfile}")
 
 
 

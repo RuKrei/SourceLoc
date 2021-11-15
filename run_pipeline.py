@@ -24,13 +24,10 @@ import numpy as np
 ####################################################################
 ####################################################################
 # configuration
-bids_root = "C:\\Users\\rudik\\MEG\\playground\\BIDS_root"
-extras_directory = "C:\\Users\\rudik\\MEG\\playground\\extras"
-input_folder = "C:\\Users\\rudik\\MEG\\playground\\input_folder"
 
-#bids_root = "/home/idrael/playground/BIDS_root"
-#extras_directory = "/home/idrael/playground/extras"
-#input_folder = "/home/idrael/playground/input_folder"
+bids_root = "/home/idrael/MEG/playground/BIDS_root"
+extras_directory = "/home/idrael/MEG/playground/extras"
+input_folder = "/home/idrael/MEG/playground/input_folder"
 
 openmp = n_jobs = 8
 
@@ -173,31 +170,45 @@ def main():
     sourcerer.calculate_source_models()
 
 
+
+
+
+
+
+
+
+
+
+# To do:
+# - create epochs object with spikes and concatenate epochs
+# - do frequency analysis (+ resting state connectivity on one
+#       input file)
+
+
+
 # process raw fifs
     # parse list of appropriate raws
     raws = glob.glob(input_folder + "/*.fif")
     raws = [f for f in raws if ject in f]
     print(f"The following raw files were found:\n{raws}")
-    all_epochs = dict()
     prepper = u.RawPreprocessor()
     for run, rawfile in enumerate(raws):
         if "tsss" in rawfile and ject in rawfile:
             # --> search for matching eventfile and combine
                 rawname = rawfile.strip(".fif") + "_prep.fif"
-                if not os.path.isfile(rawname) and not "_prep" in rawfile:  # --> if this has not been done already
-                    try:
-                        raw, all_epochs[run] = prepper.combine_raw_and_eve(rawfile, run=run)
-                    except:  # this fails if no Event-file exists, or if it is corrupted
-                        print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
-                        event_file = None
-                        event_dict = None
-                        raw = mne.io.read_raw(rawfile, preload=False, on_split_missing="ignore")
+                #if not os.path.isfile(rawname) and not "_prep" in rawfile:  # --> if this has not been done already
+                if not "_prep" in rawfile:    
+                    # epochs
+                    epochs = prepper.raw_to_epoch(rawfile)
+                    if epochs is not None:
+                        epo_filename = rawfile.strip(".fif") + "-epo.fif"
+                        epochs.save(epo_filename, overwrite=True)
                     # preprocessing
+                    raw = mne.io.read_raw(rawfile, preload=False, on_split_missing="ignore")
                     raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
                                                 h_freq=h_freq, n_jobs=n_jobs)
                     raw = prepper.resample_raw(raw, events=event_file, s_freq=s_freq, n_jobs=n_jobs)
-
-                    
+#                    
                     # Artifacts        
                     # ECG artifacts
                     # It's smarter to supervise this step (--> look at the topomaps!)
@@ -228,17 +239,21 @@ def main():
                     except Exception as e:
                         print(e)
                         print("EOG - Atrifact correction failed!")
-
                     # save raw, store projs
                     all_projs = raw.info["projs"]
                     raw.save(rawname, overwrite=True)
                     del(raw)
     
     # concatenate epochs
-    concat_epochs = mne.concatenate_epochs([all_epochs[r] for r in all_epochs.keys()])
+    epoch_files = glob.glob(input_folder + "/*-epo.fif")
+    epoch_files = [f for f in epoch_files if ject in f]
+    all_epochs = dict()
+    for f in epoch_files:
+        all_epochs[f] = mne.read_epochs(f)
+    concat_epochs = mne.concatenate_epochs([all_epochs[f] for f in epoch_files])
     concat_epochs.add_proj(all_projs, remove_existing=True)
     concat_epochs.apply_proj()
-    epo_filename = opj(os.path.dirname(raws[0]), str(subject) + "_epo.fif")
+    epo_filename = opj(dfc.spikes, str(subject) + "-epo.fif")
     print(f"Saving concatenated rawfile as {epo_filename}")
     concat_epochs.save(epo_filename)
     
