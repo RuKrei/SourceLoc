@@ -18,6 +18,7 @@ import platform
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
+from nilearn.plotting import plot_anat
 
 
 ####################################################################
@@ -247,16 +248,17 @@ def main():
                         del(raw)
 
         # concatenate epochs
-        epoch_files = glob.glob(input_folder + "/*-epo.fif")
-        epoch_files = [f for f in epoch_files if ject in f]
-        all_epochs = dict()
-        for f in epoch_files:
-            all_epochs[f] = mne.read_epochs(f)
-        concat_epochs = mne.concatenate_epochs([all_epochs[f] for f in epoch_files])
-        concat_epochs.add_proj(all_projs, remove_existing=True)
-        concat_epochs.apply_proj()
-        print(f"Saving concatenated rawfile as {epo_filename}")
-        concat_epochs.save(epo_filename)
+        if not os.path.isfile(epo_filename):
+            epoch_files = glob.glob(input_folder + "/*-epo.fif")
+            epoch_files = [f for f in epoch_files if ject in f]
+            all_epochs = dict()
+            for f in epoch_files:
+                all_epochs[f] = mne.read_epochs(f)
+            concat_epochs = mne.concatenate_epochs([all_epochs[f] for f in epoch_files])
+            concat_epochs.add_proj(all_projs, remove_existing=True)
+            concat_epochs.apply_proj()
+            print(f"Saving concatenated rawfile as {epo_filename}")
+            concat_epochs.save(epo_filename)
 
 
 
@@ -362,7 +364,6 @@ def main():
         inv = mne.minimum_norm.make_inverse_operator(raw.info, forward=fwd, noise_cov=noise_cov, 
                                             loose="auto", depth=0.8)
         snr = 3.
-        lambda2 = 1. / snr ** 2
         stc_psd, sensor_psd = mne.minimum_norm.compute_source_psd(raw, inv, lambda2=lambda2, 
                                                 method='MNE', 
                                                 fmin=1, fmax=45, n_fft=2048, n_jobs=n_jobs, 
@@ -465,16 +466,17 @@ def main():
     #                                method='auto',
     #                                n_jobs=n_jobs)
     
-    print(f"event_ids.keys = {event_ids.keys()}")
-    for event in event_ids.keys():
+    print(f"concat_epochs.event_id.keys = {concat_epochs.event_id.keys()}")
+    for event in concat_epochs.event_id.keys():
         eventname = str(event)
-        if eventname == "ignore_me" or eventname == "AAA" or eventname == ".ungrouped":
+        if eventname == "ignore_me" or eventname == "AAA" or eventname.startswith("."):
             print(f"Omitting event {event}")
         else:
             try:
                 print(f"\n\n\nNow processing event: {event}")
                 e = concat_epochs[eventname].load_data().average()
                 e_folder = os.path.join(dfc.spikes, eventname)
+                evoked_filename = opj(e_folder, ject + "_" + eventname + "-ave.fif")
                 cp_folder = os.path.join(dfc.spikes, eventname, "custom_pics")
                 cts_folder = os.path.join(dfc.spikes, eventname, "custom_time_series")
                 gp_folder = os.path.join(dfc.spikes, eventname, "generic_pics")
@@ -482,10 +484,15 @@ def main():
                 if not os.path.isdir(e_folder):
                     for f in folders:
                         os.mkdir(f)
+                e.save(evoked_filename)
                 src = mne.read_source_spaces(srcfilename)
                 bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
 
-                fwd = mne.make_forward_solution(e.info, src=src, bem=bem_sol,
+                fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
+                if os.path.isfile(fwd_name):
+                    fwd = mne.read_forward_solution(fwd_name)
+                else:
+                    fwd = mne.make_forward_solution(e.info, src=src, bem=bem_sol,
                                             trans=transfile, 
                                             meg=True, eeg=False, mindist=0.2, 
                                             ignore_ref=False, 
@@ -506,12 +513,12 @@ def main():
                                     initial_time=0, time_unit='ms', 
                                     size=(1000, 800), smoothing_steps=10)
                         brain = stc_name.plot(**surfer_kwargs)
-                        label = str(subject + " - " + eventname + " - Vector solution")
+                        label = str(ject + " - " + eventname + " - Vector solution")
                         brain.add_text(0.1, 0.9, label, 'title', font_size=10)
-                        img_f_name = ('img_stc_' + subject + '_' + eventname + '_' + m + '.png')
+                        img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
                         img_f_name = os.path.join(gp_folder, img_f_name)
                         brain.save_image(img_f_name)
-                        stc_f_name = ('stc_' + subject + '_' + eventname + '_' + m)
+                        stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m)
                         stc_f_name = os.path.join(e_folder, stc_f_name)
                         stc_name.save(stc_f_name)
                     else:
@@ -524,12 +531,12 @@ def main():
                                     initial_time=0, time_unit='ms', 
                                     size=(1000, 800), smoothing_steps=10)
                         brain = stc_name.plot(**surfer_kwargs)
-                        label = str(subject + " - " + eventname + " - " +  m)
+                        label = str(ject + " - " + eventname + " - " +  m)
                         brain.add_text(0.1, 0.9, label, 'title', font_size=10)
-                        img_f_name = ('img_stc_' + subject + '_' + eventname + '_' + m + '.png')
+                        img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
                         img_f_name = os.path.join(gp_folder, img_f_name)
                         brain.save_image(img_f_name)
-                        stc_f_name = ('stc_' + subject + '_' + eventname + '_' + m)
+                        stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m + "-ave.fif")
                         stc_f_name = os.path.join(e_folder, stc_f_name)
                         e.save(stc_f_name)
                         if m == "eLORETA":
@@ -537,16 +544,16 @@ def main():
                                                         tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
                             lh_peaks = u.get_peak_points(stc_name, hemi='lh', tmin=peaks_tmin, 
                                                         tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
-                            label = str(subject + " - " + eventname + " - " +  m + " - max. activation points")
-                            brain.add_text(0.1, 0.9, label, 'title', font_size=10)
+                            label = str(ject + " - " + eventname + " - " +  m + " - max. activation points")
+                            brain.add_text(0.1, 0.9, label, font_size=10)   #, 'title'
                             for p in rh_peaks:
                                 brain.add_foci(p, color='green', coords_as_verts=True, hemi='rh', scale_factor=0.6, alpha=0.9)
                             for p in lh_peaks:
                                 brain.add_foci(p, color='green', coords_as_verts=True, hemi='lh', scale_factor=0.6, alpha=0.9)
-                            stc_f_name = ('stc_' + subject + '_' + eventname + '_' + m + "_with_peaks")
+                            stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m + "_with_peaks-ave.fif")
                             stc_f_name = os.path.join(e_folder, stc_f_name)
                             stc_name.save(stc_f_name)
-                            img_f_name = ('img_stc_' + subject + '_' + eventname + '_' + m + '_with_peaks.png')
+                            img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '_with_peaks.png')
                             img_f_name = os.path.join(gp_folder, img_f_name)
                             brain.save_image(img_f_name)
                 # Dipoles
@@ -558,11 +565,11 @@ def main():
                     trans = mne.read_trans(transfile)
                     mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subject, subjects_dir=dfc.fanat)
                     t1_file_name = os.path.join(dfc.fanat, subject, 'mri', 'T1.mgz')
-                    stoptime = str(abs(int(stop*int(raw.info["sfreq"]))))
+                    stoptime = str(abs(int(stop*int(e.info["sfreq"]))))
                     if stoptime == "5":
                         stoptime = "05"
                     title = str(eventname + ' - ECD @ minus ' + stoptime + ' ms')
-                    t1_fig = u.plot_anat(t1_file_name, cut_coords=mri_pos[0], title=title)
+                    t1_fig = plot_anat(t1_file_name, cut_coords=mri_pos[0], title=title)
                     t1_f_name_pic = ('img_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
                     t1_f_name_pic = os.path.join(e_folder, "generic_pics", t1_f_name_pic)
                     t1_fig.savefig(t1_f_name_pic)
@@ -577,163 +584,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-"""
-To do:
-    update auto-recon-all to also take care of head-model (--> watershed uses freesurfer)
-    
-    resample and concatenate at the beginning of the pipeline --> check, that it works properly
-
-    fix filtering, resampling
-    
-
-    
-    # files are processed (Spike-Selection, Maxgfilter), so they should not 
-    # be stored at BIDS-root anymore
-    all_raws = dict()
-    for run, rawfile in enumerate(raws):
-        run +=1
-        if "tsss" in rawfile and ject in rawfile:
-            # --> search for matching eventfile and combine
-                try:
-                    raw, event_file, event_dict = prepper.combine_raw_and_eve(rawfile, run=run)  
-                    event_file = event_file.to_numpy()  
-                except:  # this fails if no Event-file exists, or if it is corrupted
-                    print(f"\n\nFound tsss-file {rawfile}, but no matching eventfile.\n\n")
-                    event_file = None
-                    event_dict = None
-                    raw = mne.io.read_raw(rawfile, preload=True)
-                #raw = prepper.filter_raw(raw, l_freq=l_freq, fir_design=fir_design,
-                #                            h_freq=h_freq, n_jobs=n_jobs)
-                raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
-                all_raws[run] = raw.copy()
-                bids_path.update(root=derivatives_root, processing="Prepared", run=run)
-                modfile = rawfile.split(".fif")[0] + "-prep.fif"
-                raw.save(modfile, overwrite=True)
-                raw = mne.io.read_raw(modfile, preload=False)
-                write_raw_bids(raw, bids_path, event_id=event_dict, events_data=event_file, overwrite=True)
-
-
-
-
-
-#######################################################################################
-#######################################################################################
-#######################################################################################
-# -->   Here would be the place to filter + concatenate input files and save one file
-#       to be processed further
-#######################################################################################
-#######################################################################################
-#######################################################################################
-    
-
-
-
-
-
-# .fif data preparations
-# --> To do: concatenate, if multiple files
-# Be less confusing with file loading logic
-    # load all files
-    raw = False
-    bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
-                        datatype="meg", 
-                        session="resting", 
-                        task="resting", 
-                        run="01",
-                        root=derivatives_root,
-                        suffix="meg",
-                        extension="fif") 
-    bids_derivatives = bids_derivatives.update(processing="tsssTransEve")
-    all_raws = bids_derivatives.match() 
-    print(f"all_raws according to bids: {all_raws}")
-    try:
-        raw = read_raw_bids(bids_derivatives)
-    except Exception as e:
-        print(f"Couldn't load BIDS fif with events: {e}")
-        bids_derivatives = bids_derivatives.update(processing="tsssTrans")
-        all_raws = bids_derivatives.match() 
-        try:
-            raw = read_raw_bids(bids_derivatives)
-        except Exception as e:
-            print(f"Couldn't load any BIDS fif: {e}")
-    if not raw:
-        meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
-        concat_fif = meg_dir + splitter + "*Concat*.fif"
-        all_raws = glob.glob(concat_fif)
-        if all_raws == []:
-            tsssTrans_fif = meg_dir + splitter + "*tsssTrans*.fif"
-            all_raws = glob.glob(tsssTrans_fif)
-        print(f"\n\nThe following files are being processed: {all_raws}\n\n")
-    
-    # Check, if this has already been done
-    meg_dir = fbase + splitter + "ses-resting" + splitter + "meg"
-    eve_fif = meg_dir + splitter + "*tsssTransEve*.fif"
-    eve_fif = glob.glob(eve_fif)
-    noeve_fif = meg_dir + splitter + "*tsssTransNo*.fif"
-    noeve_fif = glob.glob(noeve_fif)   
-    if (eve_fif == [] and noeve_fif == []):
-        # concatenate raws, if there is more than one - because why not.
-        if (len(all_raws) > 1):
-            try:
-                raws = dict()
-                for num, rawfile in enumerate(all_raws):
-                    raws[num] = mne.io.read_raw(rawfile)
-                raw = mne.concatenate_raws(list(raws.values()))
-                print("Rawfiles have been concatenated....")
-                bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
-                                datatype="meg", 
-                                session="resting", 
-                                task="resting", 
-                                root=derivatives_root, 
-                                processing="tsssTransEveConcat", 
-                                suffix="meg")
-                write_raw_bids(raw, bids_derivatives, overwrite=True)
-            except Exception as e:
-                print(f"Failed trying to concatenate multiple raw files --> {e}")
-                print("Loading only first raw file!")
-                raw = mne.io.read_raw(all_raws[0])
-        else:     
-        # raw = read_raw_bids(bids_derivatives)   # this fails again, using bare MNE to load data file
-            if not raw:
-                raw = mne.io.read_raw(all_raws[0])
-#
-        # filter
-        #raw = prepper.filter_raw(raw, l_freq=l_freq, h_freq=h_freq, n_jobs=n_jobs)
-        # resample
-        print(f"Resample to {s_freq}")
-        print(f"Original sampling frequency was: {raw.info['sfreq']}")
-        raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
-        
-        
-
-
-        
-        # save - if events have been found
-        events, event_ids = mne.events_from_annotations(raw)
-        bids_derivatives = BIDSPath(subject=subject.split("sub-")[-1], 
-                                datatype="meg", 
-                                session="resting", 
-                                task="resting", 
-                                root=derivatives_root, 
-                                processing="tsssTransEvePreproc", 
-                                suffix="meg")  
-        if len(events) > 0:
-            raw_temp = os.path.join(fprep, "temp.fif")
-            raw.save(raw_temp, overwrite=True)
-            raw = mne.io.read_raw(raw_temp, preload=False)                    
-            write_raw_bids(raw, bids_derivatives, overwrite=True)
-        else:
-        # save - if no events
-            raw_temp = os.path.join(fprep, "temp.fif")
-            raw.save(raw_temp, overwrite=True)
-            bids_derivatives.update(processing="tsssTransNoEvePreproc", run=run)   
-            raw = mne.io.read_raw(raw_temp, preload=False)                    
-            write_raw_bids(raw, bids_derivatives, overwrite=True)
-    else:
-        print("Omitting preprocessing steps, as preprocessed file has been found.")
-    """
