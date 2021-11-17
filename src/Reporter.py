@@ -36,6 +36,22 @@ class EpilepsyReportBuilder:
         day = aquisition_date.day
         return str(day) + '-' + str(month) + '-' + str(year)
     
+    def _return_stc(self, event=None, modality="eLORETA"):
+        name = os.path.basename(event)
+        if modality == "eLORETA":
+            return opj(event, "stc_" + self.subject.split("sub-")[-1] + "_" + name + "_eLORETA-lh.stc" )
+        if modality == "dSPM":
+            return opj(event, "stc_" + self.subject.split("sub-")[-1] + "_" + name + "_dSPM-stc.h5")
+
+
+
+
+
+
+
+
+
+
     def create_report(self):
         if self.subject == None:
             raise Exception
@@ -66,9 +82,24 @@ class EpilepsyReportBuilder:
         cover_title = self.subject + " MEG Befund"
         report.add_images_to_section(cover_file, section=cover_title, captions=cover_title)
 
+    # add stcs
+        event_names = glob.glob(opj(self.spikes, "*"))
+        event_names = [f for f in event_names if os.path.isdir(f)]
+        for e in event_names:
+            modalities = ["eLORETA"]  # later also: "dSPM"?
+            event = os.path.basename(e)
+            for modality in modalities:
+                stc_file = self._return_stc(event=e, modality=modality)
+                title = str(self.subject.split("sub-")[-1] + " - " + modality + " - " + event)
+                report.add_stc(stc=stc_file, title=title, tags=(event, "SourceTimeCourses", modality),
+                                subject=self.subject, subjects_dir=self.fanat, 
+                                n_time_points=40)
+        
+    
     # BEM
         try:
-            report.add_bem_to_section(self.subject, decim=4, subjects_dir=self.fanat, section='BEM')
+            report.add_bem_to_section(self.subject, decim=4, subjects_dir=self.fanat, 
+                                    section='BEM')
         except ValueError:
             print ("Could not add BEM to report, it seems a spherical model was used...")
                 
@@ -80,7 +111,7 @@ class EpilepsyReportBuilder:
     # Save all
         save_name_html = os.path.join(self.freport, (title + '.html'))
         save_name_h5 = os.path.join(self.freport, (h5title + '.h5'))   
-        report.save(save_name_html)
+        report.save(save_name_html, overwrite=True)
         #report.save(save_name_h5)
 
 
