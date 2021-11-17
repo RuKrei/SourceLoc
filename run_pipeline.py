@@ -73,6 +73,8 @@ dip_times = {   'min20ms':  (-0.025,-0.020),            # Time points in Milisec
                 'min5ms':  (-0.009,-0.005),
                 'peak':     (-0.004,0.000)}
 
+use_single_shell_model = True                           # if 3-layer-BEM fails for some reason
+
 ####################################################################
 ####################################################################
 ####################################################################
@@ -342,6 +344,8 @@ def main():
 
 # frequency spectrum
     bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
+    if not os.path.isfile(bem_sol) and use_single_shell_model:
+        bem_sol = opj(dfc.fsrc, subject + "-single-shell-BEM-sol.fif")
     fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
     srcfilename = opj(dfc.fsrc, subject + "-" + spacing + "-src.fif")
     filebase = str(subject) + "_Freqs"
@@ -350,7 +354,9 @@ def main():
     sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
     sensor_psd_filename = opj(dfc.freq, sensor_psd_filename)
     if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):  # so this should run only on the first file..
-        raw.load_data()
+        # load again in case preprocessing didn't happen before
+        concatname = opj(input_folder, str(subject) + "_concat.fif")
+        raw = mne.io.read_raw(concatname, preload=True)
         if os.path.isfile(fwd_name):
             fwd = mne.read_forward_solution(fwd_name)
         else:    
@@ -487,6 +493,8 @@ def main():
                 e.save(evoked_filename)
                 src = mne.read_source_spaces(srcfilename)
                 bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
+                if not os.path.isfile(bem_sol) and use_single_shell_model:
+                    bem_sol = opj(dfc.fsrc, subject + "-single-shell-BEM-sol.fif")
 
                 fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
                 if os.path.isfile(fwd_name):
