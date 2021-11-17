@@ -122,7 +122,7 @@ class SourceModeler:
                                                 verbose=True)
                 mne.write_source_spaces(srcfilename, src, overwrite=True, verbose=True)
             except Exception as e:
-                print(f"Failed to setup source space with spacing {spacing} \
+                print(f"Failed to setup source space with spacing {self.spacing} \
                         for {self.subject} --> {e}")
 
 

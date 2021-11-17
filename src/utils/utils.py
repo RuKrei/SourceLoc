@@ -214,7 +214,6 @@ class RawPreprocessor():
     def resample_raw(self, raw, s_freq=300, events=None, n_jobs=1):
         print(f"Resampling to {s_freq} Hz")
         raw = raw.resample(s_freq, npad='auto', events=events, n_jobs=n_jobs)
-        #raw.add_events(events)
         print("Resampling complete!")
         return raw
 
@@ -225,9 +224,8 @@ class RawPreprocessor():
         if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
             print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
             raw = mne.io.read_raw(rawfile, preload=True, on_split_missing="ignore")
-            event_file, event_dict = self.transform_eventfile(eve_name)
+            event_file, _ = self.transform_eventfile(eve_name)
             raw.add_events(event_file)
-            print(f"raw.info @ utils: {raw.info}")
             return raw
     
     def raw_to_epoch(self, rawfile=None):
@@ -249,7 +247,7 @@ class RawPreprocessor():
                 del(raw)
                 return epochs
             except Exception as e:
-                print(f"failed at returning an epochs object for: {rawfile}")
+                print(f"failed at returning an epochs object for: {rawfile}\nbecause of {e}")
 
 
 

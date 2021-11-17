@@ -26,11 +26,18 @@ from nilearn.plotting import plot_anat
 ####################################################################
 # configuration
 
-bids_root = "/home/idrael/MEG/playground/BIDS_root"
-extras_directory = "/home/idrael/MEG/playground/extras"
-input_folder = "/home/idrael/MEG/playground/input_folder"
+#laptop - test
+#bids_root = "/home/idrael/MEG/playground/BIDS_root"
+#extras_directory = "/home/idrael/MEG/playground/extras"
+#input_folder = "/home/idrael/MEG/playground/input_folder"
 
-openmp = n_jobs = 8
+# work
+bids_root = "/run/media/meg/DATA/MEG/test_BIDS_clinic"
+extras_directory = "/home/meg/Schreibtisch/new_patients/extras"
+input_folder = "/home/meg/Schreibtisch/new_patients"
+
+#openmp = n_jobs = 8
+#spacing = "ico4"
 
 # Filter and resample
 l_freq: float = 0.1    # lower pass-band edge
@@ -171,14 +178,6 @@ def main():
     sourcerer.calculate_source_models()
 
 
-
-
-
-
-# To do:
-# save epochs with event-names!
-
-
 # process raw fifs
     raws = glob.glob(input_folder + "/*.fif")
     raws = [f for f in raws if ject in f]
@@ -248,6 +247,7 @@ def main():
                         del(raw)
 
         # concatenate epochs
+        epo_filename = opj(dfc.spikes, str(subject) + "-epo.fif")
         if not os.path.isfile(epo_filename):
             epoch_files = glob.glob(input_folder + "/*-epo.fif")
             epoch_files = [f for f in epoch_files if ject in f]
@@ -469,7 +469,7 @@ def main():
     print(f"concat_epochs.event_id.keys = {concat_epochs.event_id.keys()}")
     for event in concat_epochs.event_id.keys():
         eventname = str(event)
-        if eventname == "ignore_me" or eventname == "AAA" or eventname.startswith("."):
+        if eventname == "ignore_me" or eventname == "AAA" or eventname == (".ungrouped"):
             print(f"Omitting event {event}")
         else:
             try:
