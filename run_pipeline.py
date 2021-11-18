@@ -27,14 +27,14 @@ from nilearn.plotting import plot_anat
 # configuration
 
 #laptop - test
-#bids_root = "/home/idrael/MEG/playground/BIDS_root"
-#extras_directory = "/home/idrael/MEG/playground/extras"
-#input_folder = "/home/idrael/MEG/playground/input_folder"
+bids_root = "/home/idrael/MEG/playground/BIDS_root"
+extras_directory = "/home/idrael/MEG/playground/extras"
+input_folder = "/home/idrael/MEG/playground/input_folder"
 
 # work
-bids_root = "/run/media/meg/DATA/MEG/test_BIDS_clinic"
-extras_directory = "/home/meg/Schreibtisch/new_patients/extras"
-input_folder = "/home/meg/Schreibtisch/new_patients"
+#bids_root = "/run/media/meg/DATA/MEG/test_BIDS_clinic"
+#extras_directory = "/home/meg/Schreibtisch/new_patients/extras"
+#input_folder = "/home/meg/Schreibtisch/new_patients"
 
 #openmp = n_jobs = 8
 #spacing = "ico4"
@@ -74,6 +74,13 @@ dip_times = {   'min20ms':  (-0.025,-0.020),            # Time points in Milisec
                 'peak':     (-0.004,0.000)}
 
 use_single_shell_model = True                           # if 3-layer-BEM fails for some reason
+
+# Crop stcs for report
+# epochs go from -1500ms to + 1000ms
+# -1500ms = 0, 1000ms = 2500
+# tmin/ tmax = in seconds --> 0.05 = 50ms
+stc_tmin = 1.350  # - 150 ms
+stc_tmax = 1.550
 
 ####################################################################
 ####################################################################
@@ -528,6 +535,7 @@ def main():
                         brain.save_image(img_f_name)
                         stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m)
                         stc_f_name = os.path.join(e_folder, stc_f_name)
+                        stc_name = stc_name.crop(tmin=-stc_tmin, tmax=stc_tmax)
                         stc_name.save(stc_f_name)
                     else:
                         stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
@@ -544,9 +552,10 @@ def main():
                         img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
                         img_f_name = os.path.join(gp_folder, img_f_name)
                         brain.save_image(img_f_name)
-                        stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m + "-ave.fif")
+                        stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m)
                         stc_f_name = os.path.join(e_folder, stc_f_name)
-                        e.save(stc_f_name)
+                        stc_name = stc_name.crop(tmin=-stc_tmin, tmax=stc_tmax)
+                        stc_name.save(stc_f_name)
                         if m == "eLORETA":
                             rh_peaks = u.get_peak_points(stc_name, hemi='rh', tmin=peaks_tmin, 
                                                         tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
@@ -558,7 +567,7 @@ def main():
                                 brain.add_foci(p, color='green', coords_as_verts=True, hemi='rh', scale_factor=0.6, alpha=0.9)
                             for p in lh_peaks:
                                 brain.add_foci(p, color='green', coords_as_verts=True, hemi='lh', scale_factor=0.6, alpha=0.9)
-                            stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m + "_with_peaks-ave.fif")
+                            stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m + "_with_peaks-ave")
                             stc_f_name = os.path.join(e_folder, stc_f_name)
                             stc_name.save(stc_f_name)
                             img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '_with_peaks.png')
