@@ -170,7 +170,7 @@ class EpilepsyReportBuilder:
                 viz_eve = concat_epochs[de].average().crop(-0.15, 0.1)         
                 fig = viz_eve.plot_joint(times=times, show=False)
                 title = str(de + " - Topomap")
-                report.add_figure(fig, title=title, tags=("Topomaps", de))
+                report.add_figure(fig, title=title)
 
     # add stcs
         for e in desired_events:
@@ -180,9 +180,9 @@ class EpilepsyReportBuilder:
                 try:
                     stc_file = self._return_stc(event=e, modality=modality)
                     title = str(self.subject.split("sub-")[-1] + " - " + modality + " - " + event)
-                    report.add_stc(stc=stc_file, title=title, tags=(event, "SourceTimeCourses", modality),
+                    report.add_stc(stc=stc_file, title=title,
                                 subject=self.subject, subjects_dir=self.fanat, 
-                                n_time_points=40)
+                                n_time_points=100)
                 except Exception as e:
                     print(e)
     
@@ -191,7 +191,7 @@ class EpilepsyReportBuilder:
         #with open(freq_file, "rb") as f:
         #    stc_freqs = load(f)
         #title = str(self.subject.split("sub-")[-1] + " - Frequency distribution")
-        #report.add_stc(stc=stc_freqs, title=title, tags=("Frequency distribution"),
+        #report.add_stc(stc=stc_freqs, title=title,  # tags=("Frequency distribution"),
         #                        subject=self.subject, subjects_dir=self.fanat)
         
         freq_bands = ["delta", "theta", "alpha", "beta", "gamma"]                #the frequency bands of interest for the analysis    
@@ -199,7 +199,7 @@ class EpilepsyReportBuilder:
             try:
                 fig = self._plot_frequencies(freq)
                 title = str(self.subject.split("sub-")[-1] + " - Frequency distribution - " + freq)
-                report.add_figure(fig, title=title, tags=("Frequency distribution", freq))
+                report.add_figure(fig, title=title)
             except Exception as e:
                 print(e)
         
