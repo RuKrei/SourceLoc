@@ -14,6 +14,7 @@ from pickle import load
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from numpy import linspace
 
 
 class EpilepsyReportBuilder:
@@ -111,10 +112,13 @@ class EpilepsyReportBuilder:
                         fig.tight_layout()
                         return fig
 
-
-
-
-
+    def _is_desired_event(self, de):
+        is_a_fif = True if de.endswith(".fif") else False
+        is_pickle = True if de.endswith(".pkl") else False
+        ignorance = True if "ignore_me" in de else False
+        point = True if de.startswith(".") else False
+        triple_a = True if de == "AAA" else False
+        return not (any([is_a_fif, is_pickle, ignorance, point, triple_a]))  # None of the above conditions should be true
 
     def create_report(self):
         if self.subject == None:
@@ -149,10 +153,27 @@ class EpilepsyReportBuilder:
         except FileNotFoundError as e:
             print(e)
 
+    # Event selection --> omit events by renaming the folder/ adding a . in front
+        desired_events = glob.glob(opj(self.spikes, "*"))
+        print(f"Desired events are: {desired_events}")
+
+    # Add topomaps
+        epo_filename = opj(self.spikes, str(self.subject) + "-epo.fif")
+        concat_epochs = mne.read_epochs(epo_filename)
+        noise_cov_file = opj(self.spikes, "Spikes_noise_covariance.pkl")
+        times = linspace(-0.02, 0.01, 6)
+        with open(noise_cov_file, 'rb') as f:
+            noise_cov = load(f)
+        for de in desired_events:
+            de = os.path.basename(de)
+            if self._is_desired_event(de):
+                viz_eve = concat_epochs[de].average().crop(-0.15, 0.1)         
+                fig = viz_eve.plot_joint(times=times, show=False)
+                title = str(de + " - Topomap")
+                report.add_figure(fig, title=title, tags=("Topomaps", de))
+
     # add stcs
-        event_names = glob.glob(opj(self.spikes, "*"))
-        event_names = [f for f in event_names if os.path.isdir(f)]
-        for e in event_names:
+        for e in desired_events:
             modalities = ["eLORETA"]  # later also: "dSPM"?
             event = os.path.basename(e)
             for modality in modalities:
@@ -166,17 +187,14 @@ class EpilepsyReportBuilder:
                     print(e)
     
     # add frequency distribution
-        """
-        freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
-        with open(freq_file, "rb") as f:
-            stc_freqs = load(f)
-        title = str(self.subject.split("sub-")[-1] + " - Frequency distribution")
-        report.add_stc(stc=stc_freqs, title=title, tags=("Frequency distribution"),
-                                subject=self.subject, subjects_dir=self.fanat)
-        """
+        #freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
+        #with open(freq_file, "rb") as f:
+        #    stc_freqs = load(f)
+        #title = str(self.subject.split("sub-")[-1] + " - Frequency distribution")
+        #report.add_stc(stc=stc_freqs, title=title, tags=("Frequency distribution"),
+        #                        subject=self.subject, subjects_dir=self.fanat)
         
-        freq_bands = ["delta", "theta", "alpha", "beta", "gamma"]                #the frequency bands of interest for the analysis
-                
+        freq_bands = ["delta", "theta", "alpha", "beta", "gamma"]                #the frequency bands of interest for the analysis    
         for freq in freq_bands:
             try:
                 fig = self._plot_frequencies(freq)
@@ -185,14 +203,12 @@ class EpilepsyReportBuilder:
             except Exception as e:
                 print(e)
         
-    
     # BEM
         try:
             report.add_bem_to_section(self.subject, decim=4, subjects_dir=self.fanat, 
                                     section='BEM')
         except ValueError:
             print ("Could not add BEM to report, it seems a spherical model was used...")
-                
 
     # Add disclaimer image
         try:
@@ -200,9 +216,10 @@ class EpilepsyReportBuilder:
             report.add_images_to_section(disclaimer_file, section='disclaimer', captions='End notes')   
         except FileNotFoundError as e:
             print(e)
-        
+            
     # Save all
-        save_name_html = os.path.join(self.freport, (title + '.html'))
+        title = (self.subject + " _MEG_Befund.html")
+        save_name_html = os.path.join(self.freport, title)
         save_name_h5 = os.path.join(self.freport, (h5title + '.h5'))   
         report.save(save_name_html, overwrite=True)
         #report.save(save_name_h5)
