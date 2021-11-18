@@ -10,6 +10,10 @@ import platform
 import argparse
 import mne
 from datetime import datetime
+from pickle import load
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 
 class EpilepsyReportBuilder:
@@ -43,9 +47,69 @@ class EpilepsyReportBuilder:
         if modality == "dSPM":
             return opj(event, "stc_" + self.subject.split("sub-")[-1] + "_" + name + "_dSPM-stc.h5")
 
-
-
-
+    def _plot_frequencies(self, band=None):
+        if band == None:
+            print("Expected a freq_band (str))")
+            return
+        freq_folder = self.freq
+        matplotlib.rcParams["figure.facecolor"] = "black"
+        freq_files = glob.glob(opj(freq_folder, "*_freq_topomap_3d_dors.png"))
+        xhemi_files = glob.glob(opj(freq_folder, "*_x_hemi*.png"))
+        for freq_file in freq_files:
+            if str(band) in os.path.basename(freq_file):
+                for xhemi_file in xhemi_files:
+                    if str(band) in os.path.basename(xhemi_file):
+                        fig = plt.Figure(facecolor="k")
+                        fig.set_figwidth(15)
+                        fig.set_figheight(15)
+                        # lateral
+                        ax2 = fig.add_subplot(3, 2, 1)
+                        ax2.set_title('Left hemisphere', color=(1,1,1))
+                        ax2.set_xticks([])
+                        ax2.set_yticks([])
+                        lat_file = (freq_file.split("dors.png")[0] + "lat_lh.png")
+                        mpimg_img = mpimg.imread(lat_file) 
+                        ax2.imshow(mpimg_img)
+                        ax3 = fig.add_subplot(3, 2, 2)
+                        ax3.set_title('Right hemisphere', color=(1,1,1))
+                        ax3.set_xticks([])
+                        ax3.set_yticks([])
+                        lat_file = (freq_file.split("dors.png")[0] + "lat_rh.png")
+                        mpimg_img = mpimg.imread(lat_file) 
+                        ax3.imshow(mpimg_img)
+                        # medial
+                        ax5 = fig.add_subplot(3, 2, 3)
+                        ax5.set_title('Left hemisphere', color=(1,1,1))
+                        ax5.set_xticks([])
+                        ax5.set_yticks([])
+                        med_file = (freq_file.split("dors.png")[0] + "med_lh.png")
+                        print(med_file)
+                        mpimg_img = mpimg.imread(med_file)
+                        ax5.imshow(mpimg_img)
+                        ax6 = fig.add_subplot(3, 2, 4)
+                        ax6.set_title('Right hemisphere', color=(1,1,1))
+                        ax6.set_xticks([])
+                        ax6.set_yticks([])
+                        med_file = (freq_file.split("dors.png")[0] + "med_rh.png")
+                        mpimg_img = mpimg.imread(med_file) 
+                        ax6.imshow(mpimg_img)
+                         # dorsal
+                        ax1 = fig.add_subplot(3, 2, 5)
+                        ax1.set_title('Dorsal view', color=(1,1,1))
+                        ax1.set_xticks([])
+                        ax1.set_yticks([])
+                        mpimg_img = mpimg.imread(freq_file) 
+                        ax1.imshow(mpimg_img)
+                        # xhemi
+                        ax4 = fig.add_subplot(3, 2, 6)
+                        ax4.set_title('Cross hemisphere comparison', color=(1,1,1))
+                        ax4.set_xticks([])
+                        ax4.set_yticks([])
+                        mpimg_img = mpimg.imread(xhemi_file) 
+                        ax4.imshow(mpimg_img)
+                        matplotlib.rcParams["figure.facecolor"] = "black"
+                        fig.tight_layout()
+                        return fig
 
 
 
@@ -78,9 +142,12 @@ class EpilepsyReportBuilder:
 
 
     # Add title image
-        cover_file = opj(self.extras_dir, "MEG_title.png")
-        cover_title = self.subject + " MEG Befund"
-        report.add_images_to_section(cover_file, section=cover_title, captions=cover_title)
+        try:
+            cover_file = opj(self.extras_dir, "MEG_title.png")
+            cover_title = self.subject + " MEG Befund"
+            report.add_images_to_section(cover_file, section=cover_title, captions=cover_title)
+        except FileNotFoundError as e:
+            print(e)
 
     # add stcs
         event_names = glob.glob(opj(self.spikes, "*"))
@@ -89,11 +156,34 @@ class EpilepsyReportBuilder:
             modalities = ["eLORETA"]  # later also: "dSPM"?
             event = os.path.basename(e)
             for modality in modalities:
-                stc_file = self._return_stc(event=e, modality=modality)
-                title = str(self.subject.split("sub-")[-1] + " - " + modality + " - " + event)
-                report.add_stc(stc=stc_file, title=title, tags=(event, "SourceTimeCourses", modality),
+                try:
+                    stc_file = self._return_stc(event=e, modality=modality)
+                    title = str(self.subject.split("sub-")[-1] + " - " + modality + " - " + event)
+                    report.add_stc(stc=stc_file, title=title, tags=(event, "SourceTimeCourses", modality),
                                 subject=self.subject, subjects_dir=self.fanat, 
                                 n_time_points=40)
+                except Exception as e:
+                    print(e)
+    
+    # add frequency distribution
+        """
+        freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
+        with open(freq_file, "rb") as f:
+            stc_freqs = load(f)
+        title = str(self.subject.split("sub-")[-1] + " - Frequency distribution")
+        report.add_stc(stc=stc_freqs, title=title, tags=("Frequency distribution"),
+                                subject=self.subject, subjects_dir=self.fanat)
+        """
+        
+        freq_bands = ["delta", "theta", "alpha", "beta", "gamma"]                #the frequency bands of interest for the analysis
+                
+        for freq in freq_bands:
+            try:
+                fig = self._plot_frequencies(freq)
+                title = str(self.subject.split("sub-")[-1] + " - Frequency distribution - " + freq)
+                report.add_figure(fig, title=title, tags=("Frequency distribution", freq))
+            except Exception as e:
+                print(e)
         
     
     # BEM
@@ -105,9 +195,12 @@ class EpilepsyReportBuilder:
                 
 
     # Add disclaimer image
-        disclaimer_file = opj(self.extras_dir, 'MEG_disclaimer.png')
-        report.add_images_to_section(disclaimer_file, section='disclaimer', captions='End notes')   
-
+        try:
+            disclaimer_file = opj(self.extras_dir, 'MEG_disclaimer.png')
+            report.add_images_to_section(disclaimer_file, section='disclaimer', captions='End notes')   
+        except FileNotFoundError as e:
+            print(e)
+        
     # Save all
         save_name_html = os.path.join(self.freport, (title + '.html'))
         save_name_h5 = os.path.join(self.freport, (h5title + '.h5'))   
