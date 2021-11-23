@@ -15,6 +15,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from numpy import linspace
+import logging
 
 
 class EpilepsyReportBuilder:
@@ -214,43 +215,36 @@ class EpilepsyReportBuilder:
         mpimg_img = mpimg.imread(T1[0]) 
         ax5.imshow(mpimg_img)
 
-
         # 3D imgs
         ax6 = fig.add_subplot(5, 2, 2)
-        #ax6.set_title('minus 20 ms')
         ax6.set_xticks([])
         ax6.set_yticks([])
         mpimg_img = mpimg.imread(drei[4]) 
         ax6.imshow(mpimg_img)
 
         ax7 = fig.add_subplot(5, 2, 4)
-        #ax7.set_title('minus 15 ms')
         ax7.set_xticks([])
         ax7.set_yticks([])
         mpimg_img = mpimg.imread(drei[3]) 
         ax7.imshow(mpimg_img)
 
         ax8 = fig.add_subplot(5, 2, 6)
-        #ax8.set_title('minus 10 ms')
         ax8.set_xticks([])
         ax8.set_yticks([])
         mpimg_img = mpimg.imread(drei[2]) 
         ax8.imshow(mpimg_img)
 
         ax9 = fig.add_subplot(5, 2, 8)
-        #ax9.set_title('minus 5 ms')
         ax9.set_xticks([])
         ax9.set_yticks([])
         mpimg_img = mpimg.imread(drei[1]) 
         ax9.imshow(mpimg_img)
 
         ax10 = fig.add_subplot(5, 2, 10)
-        #ax10.set_title('peak')
         ax10.set_xticks([])
         ax10.set_yticks([])
         mpimg_img = mpimg.imread(drei[0]) 
         ax10.imshow(mpimg_img)
-
 
         fig.suptitle(str(event + ' - ECD'), fontsize=12)
         fig.tight_layout()
@@ -266,42 +260,41 @@ class EpilepsyReportBuilder:
         now = str(datetime.now())
         aquisition_date = self._get_aquisition_date(fif)
 
+        # logger
+        logfile = opj(self.freport, "Reporter.log")
+        logging.basicConfig(filename=logfile, filemode="w",
+                            format="\n%(levelname)s --> %(message)s")
+        rootlog = logging.getLogger()
+        rootlog.setLevel(logging.INFO)
+
+        rootlog.info(f"Now creating report for: {self.subject.split('sub-')[-1]} \n \
+                MEG aquisition date --> {aquisition_date}\n \
+                Report created --> {now}")
+
         try:
             title = (self.subject + ' _MEG_vom_' + aquisition_date + '_Befund-' + now)
             h5title = (self.subject + ' _MEG_vom_' + aquisition_date + '_Befund')
-        except NameError:
-            print("Title setting with date failed")
+        except NameError as ne:
+            rootlog.warning(f"Title setting with aquisition date failed: {ne}")
             title = (self.subject + ' _MEG_Befund-' + now)
             h5title = (self.subject + ' _MEG_Befund-' + now)
         
-        print(f"\n\n\n\n\n\nNow creating report for: {self.subject.split('sub-')[-1]} \n \
-                MEG aquisition date --> {aquisition_date}\n \
-                Report created --> {now}")
-        
         report = mne.Report(subject=self.subject, subjects_dir=self.fanat, 
                         title=title, verbose=True)
-
 
     # Add title image
         try:
             cover_file = opj(self.extras_dir, "MEG_title.png")
             cover_title = self.subject + " MEG Befund"
             report.add_images_to_section(cover_file, section=cover_title, captions=cover_title)
-        except FileNotFoundError as e:
-            print(e)
+        except FileNotFoundError as fnfe:
+            rootlog.warning(f"MEG title page not found: {fnfe}")
 
     # Event selection --> omit events by renaming the folder/ adding a . in front
         desired_events = glob.glob(opj(self.spikes, "*"))
-        print(f"Desired events are: {desired_events}")
+        rootlog.info(f"The following event-folders were found:\n{desired_events}")
 
-    # Add topomaps 
-
-    # To do:    add topomaps from cropped stcs, save (cropped) evokeds in spike-subfolder
-    #           use those as stcs for eLORETA below
-
-
-
-    
+    # Add topomaps
         epo_filename = opj(self.spikes, str(self.subject) + "-epo.fif")
         concat_epochs = mne.read_epochs(epo_filename)
         noise_cov_file = opj(self.spikes, "Spikes_noise_covariance.pkl")
@@ -318,46 +311,50 @@ class EpilepsyReportBuilder:
                 report.add_figure(fig, title=title)
 
     # add stcs
-            modalities = ["eLORETA"]  # later also: "dSPM"?
-            for modality in modalities:
-                try:
-                    stc_file = self._return_stc(event=e, modality=modality)
-                    title = str(event + " - " + modality)
-                    report.add_stc(stc=stc_file, title=title,
-                                subject=self.subject, subjects_dir=self.fanat, 
-                                n_time_points=100)
-                except Exception as ex:
-                    print(ex)
+                modalities = ["eLORETA"]  # later also: "dSPM"?
+                rootlog.info(f"For event \"{event}\" the following stc-modalities were included: {modalities}.")
+                for modality in modalities:
+                    try:
+                        stc_file = self._return_stc(event=e, modality=modality)
+                        title = str(event + " - " + modality)
+                        report.add_stc(stc=stc_file, title=title,
+                                    subject=self.subject, subjects_dir=self.fanat, 
+                                    n_time_points=100)
+                    except Exception as ex:
+                        rootlog.warning(f"Couldn't include {modality} - stc to report because of: {ex}")
 
     # add ECD pics
-            generic_pics_folder = os.path.join(self.spikes, event, "generic_pics")
-            drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
-            T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
-            matplotlib.rcParams["figure.facecolor"] = "black"
-            if drei != [] and T1 != []:
-                ECD_fig = self._plot_ECD_table(T1=T1, drei=drei, event=event)
-                caption = str(event + " - ECD")
-                report.add_figure(ECD_fig, title=caption, caption=caption)
+                rootlog.info(f"Now generating ECD-plot for {event}...")
+                generic_pics_folder = os.path.join(self.spikes, event, "generic_pics")
+                drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
+                T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
+                matplotlib.rcParams["figure.facecolor"] = "black"
+                if drei != [] and T1 != []:
+                    ECD_fig = self._plot_ECD_table(T1=T1, drei=drei, event=event)
+                    caption = str(event + " - ECD")
+                    report.add_figure(ECD_fig, title=caption, caption=caption)
 
     # add custom pics and custom time series
-            custom_pics_folder = os.path.join(self.spikes, event, "custom_pics")
-            custom_pics = glob.glob(custom_pics_folder + "/*.png")
-            custom_ts_folder = os.path.join(self.spikes, e, "custom_time_series")
-            custom_ts = glob.glob(custom_ts_folder + "/*.png")
-            if custom_pics is not []:
-                for cst in custom_pics:
-                    cst_title = cst.split('/')[-1]
-                    cst_title = cst_title.split('.')[0]
-                    caption = event + ' - ' + cst_title
-                    report.add_image(cst, title=cst_title, caption=caption)
-            if custom_ts is not []:    
-                for _ in custom_ts:
-                    caption = event + ' - Time course'
-                    fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
-                    fig = self._plot_time_course(event=e)
-                    plt.tight_layout()
-                    report.add_figure(fig, title=caption, caption=caption)
-                    break
+                custom_pics_folder = os.path.join(self.spikes, event, "custom_pics")
+                custom_pics = glob.glob(custom_pics_folder + "/*.png")
+                custom_ts_folder = os.path.join(self.spikes, e, "custom_time_series")
+                custom_ts = glob.glob(custom_ts_folder + "/*.png")
+                if custom_pics is not []:
+                    rootlog.info(f"Now adding custom pics for {event}...")
+                    for cst in custom_pics:
+                        cst_title = cst.split('/')[-1]
+                        cst_title = cst_title.split('.')[0]
+                        caption = event + ' - ' + cst_title
+                        report.add_image(cst, title=cst_title, caption=caption)
+                if custom_ts is not []:   
+                    rootlog.info(f"Now adding custom time series for {event}...") 
+                    for _ in custom_ts:
+                        caption = event + ' - Time course'
+                        fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
+                        fig = self._plot_time_course(event=e)
+                        plt.tight_layout()
+                        report.add_figure(fig, title=caption, caption=caption)
+                        break
 
     # add frequency distribution
         #freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
@@ -368,41 +365,42 @@ class EpilepsyReportBuilder:
         #                        subject=self.subject, subjects_dir=self.fanat)
         
         freq_bands = ["delta", "theta", "alpha", "beta", "gamma"]                #the frequency bands of interest for the analysis    
+        rootlog.info(f"Now adding frequency distribution...")
         for freq in freq_bands:
             try:
                 fig = self._plot_frequencies(freq)
                 title = str(self.subject.split("sub-")[-1] + " - Frequency distribution - " + freq)
                 report.add_figure(fig, title=title)
-            except Exception as e:
-                print(e)
+            except Exception as ex:
+                rootlog.warning(f"Something went wrong trying to add freqs: {ex}")
         
     # BEM
         try:
+            rootlog.info(f"Now adding BEM.")
             report.add_bem_to_section(self.subject, decim=4, subjects_dir=self.fanat, 
                                     section='BEM')
-        except ValueError:
-            print ("Could not add BEM to report, it seems a spherical model was used...")
+        except ValueError as ve:
+            rootlog.info("Could not add BEM to report, maybe a spherical model was used? Error was: {ve}")
 
     # Add disclaimer image
         try:
+            rootlog.info(f"Now adding Disclaimer.")
             disclaimer_file = opj(self.extras_dir, 'MEG_disclaimer.png')
             report.add_images_to_section(disclaimer_file, section='disclaimer', captions='End notes')   
-        except FileNotFoundError as e:
-            print(e)
+        except FileNotFoundError as fnfe:
+            rootlog.warning(f"Disclaimer file not found - {e}")
             
     # Save all
-        title = (self.subject + " _MEG_Befund.html")
-        save_name_html = os.path.join(self.freport, title)
-        save_name_h5 = os.path.join(self.freport, (h5title + '.h5'))   
-        report.save(save_name_html, overwrite=True)
-        #report.save(save_name_h5)
-
-
-
-
-
-
-
+        try:
+            rootlog.info(f"Saving...")
+            title = (self.subject + " _MEG_Befund.html")
+            save_name_html = os.path.join(self.freport, title)
+            save_name_h5 = os.path.join(self.freport, (h5title + '.h5'))   
+            report.save(save_name_html, overwrite=True)
+            #report.save(save_name_h5)
+            rootlog.info(f"Saving complete.")
+        except Exception as ex:
+            rootlog.warning(f"Saving failed because of: {ex}")
 
 def main():
     parser = argparse.ArgumentParser()     
@@ -418,9 +416,6 @@ def main():
     reporter = EpilepsyReportBuilder(derivatives_root=args.derivatives_root, subject=args.subject, 
                                     extras_dir=args.extras_dir)
     reporter.create_report()
-
-    print("\n\n\nall good")
     
-
 if __name__ == '__main__':
     main()
