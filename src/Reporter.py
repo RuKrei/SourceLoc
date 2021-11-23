@@ -120,6 +120,143 @@ class EpilepsyReportBuilder:
         triple_a = True if de == "AAA" else False
         return not (any([is_a_fif, is_pickle, ignorance, point, triple_a]))  # None of the above conditions should be true
 
+    def _plot_time_course(self, event=None):
+        custom_ts_folder = os.path.join(self.spikes, event, "custom_time_series")
+        series = sorted(glob.glob(custom_ts_folder + "/*.png"))
+        matplotlib.rcParams["figure.facecolor"] = "black"
+        fig = plt.Figure()
+        fig.set_figwidth(15)
+        fig.set_figheight(15)
+        fig.suptitle(str(event + ' Time course'), fontsize=12)
+
+        ax1 = fig.add_subplot(3, 2, 1)
+        ax1.set_title('minus 20 ms')
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+        mpimg_img = mpimg.imread(sorted(series)[0]) 
+        ax1.imshow(mpimg_img)
+
+        ax2 = fig.add_subplot(3, 2, 2)
+        ax2.set_title('minus 15 ms')
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+        mpimg_img = mpimg.imread(sorted(series)[1]) 
+        ax2.imshow(mpimg_img)
+
+        ax3 = fig.add_subplot(3, 2, 3)
+        ax3.set_title('minus 10 ms')
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+        mpimg_img = mpimg.imread(sorted(series)[2]) 
+        ax3.imshow(mpimg_img)
+
+        ax4 = fig.add_subplot(3, 2, 4)
+        ax4.set_title('minus 5 ms')
+        ax4.set_xticks([])
+        ax4.set_yticks([])
+        mpimg_img = mpimg.imread(sorted(series)[3]) 
+        ax4.imshow(mpimg_img)
+
+        ax5 = fig.add_subplot(3, 2, 5)
+        ax5.set_title('peak')
+        ax5.set_xticks([])
+        ax5.set_yticks([])
+        mpimg_img = mpimg.imread(sorted(series)[4]) 
+        ax5.imshow(mpimg_img)
+
+        ax6 = fig.add_subplot(3, 2, 6)
+        ax6.set_title('plus 5 ms')
+        ax6.set_xticks([])
+        ax6.set_yticks([])
+        mpimg_img = mpimg.imread(sorted(series)[5]) 
+        ax6.imshow(mpimg_img)
+
+        fig.faceclolor = "black"
+        fig.tight_layout()
+        return fig
+    
+    def _plot_ECD_table(self, T1=None, drei=None, event=None):
+        fig = plt.Figure(figsize=(15,25), dpi=150, facecolor="k")
+
+        # T1 imgs
+        ax1 = fig.add_subplot(5, 2, 1)
+        ax1.set_title('minus 20 ms')
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+        mpimg_img = mpimg.imread(T1[4]) 
+        ax1.imshow(mpimg_img)
+
+        ax2 = fig.add_subplot(5, 2, 3)
+        ax2.set_title('minus 15 ms')
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+        mpimg_img = mpimg.imread(T1[3]) 
+        ax2.imshow(mpimg_img)
+
+        ax3 = fig.add_subplot(5, 2, 5)
+        ax3.set_title('minus 10 ms')
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+        mpimg_img = mpimg.imread(T1[2]) 
+        ax3.imshow(mpimg_img)
+
+        ax4 = fig.add_subplot(5, 2, 7)
+        ax4.set_title('minus 5 ms')
+        ax4.set_xticks([])
+        ax4.set_yticks([])
+        mpimg_img = mpimg.imread(T1[1]) 
+        ax4.imshow(mpimg_img)
+
+        ax5 = fig.add_subplot(5, 2, 9)
+        ax5.set_title('peak')
+        ax5.set_xticks([])
+        ax5.set_yticks([])
+        mpimg_img = mpimg.imread(T1[0]) 
+        ax5.imshow(mpimg_img)
+
+
+        # 3D imgs
+        ax6 = fig.add_subplot(5, 2, 2)
+        #ax6.set_title('minus 20 ms')
+        ax6.set_xticks([])
+        ax6.set_yticks([])
+        mpimg_img = mpimg.imread(drei[4]) 
+        ax6.imshow(mpimg_img)
+
+        ax7 = fig.add_subplot(5, 2, 4)
+        #ax7.set_title('minus 15 ms')
+        ax7.set_xticks([])
+        ax7.set_yticks([])
+        mpimg_img = mpimg.imread(drei[3]) 
+        ax7.imshow(mpimg_img)
+
+        ax8 = fig.add_subplot(5, 2, 6)
+        #ax8.set_title('minus 10 ms')
+        ax8.set_xticks([])
+        ax8.set_yticks([])
+        mpimg_img = mpimg.imread(drei[2]) 
+        ax8.imshow(mpimg_img)
+
+        ax9 = fig.add_subplot(5, 2, 8)
+        #ax9.set_title('minus 5 ms')
+        ax9.set_xticks([])
+        ax9.set_yticks([])
+        mpimg_img = mpimg.imread(drei[1]) 
+        ax9.imshow(mpimg_img)
+
+        ax10 = fig.add_subplot(5, 2, 10)
+        #ax10.set_title('peak')
+        ax10.set_xticks([])
+        ax10.set_yticks([])
+        mpimg_img = mpimg.imread(drei[0]) 
+        ax10.imshow(mpimg_img)
+
+
+        fig.suptitle(str(event + ' - ECD'), fontsize=12)
+        fig.tight_layout()
+        matplotlib.rcParams["figure.facecolor"] = "black"
+        return fig
+
     def create_report(self):
         if self.subject == None:
             raise Exception
@@ -171,28 +308,57 @@ class EpilepsyReportBuilder:
         times = linspace(-0.02, 0.01, 6)
         with open(noise_cov_file, 'rb') as f:
             noise_cov = load(f)
-        for de in desired_events:
-            de = os.path.basename(de)
-            if self._is_desired_event(de):
-                viz_eve = concat_epochs[de].average().crop(-0.15, 0.1)         
+        for e in desired_events:
+            event = os.path.basename(e)
+            matplotlib.rcParams["figure.facecolor"] = "white"
+            if self._is_desired_event(event):
+                viz_eve = concat_epochs[event].average().crop(-0.15, 0.1)         
                 fig = viz_eve.plot_joint(times=times, show=False)
-                title = str(de + " - Topomap")
+                title = str(event + " - Topomap")
                 report.add_figure(fig, title=title)
 
     # add stcs
-        for e in desired_events:
             modalities = ["eLORETA"]  # later also: "dSPM"?
-            event = os.path.basename(e)
             for modality in modalities:
                 try:
                     stc_file = self._return_stc(event=e, modality=modality)
-                    title = str(self.subject.split("sub-")[-1] + " - " + modality + " - " + event)
+                    title = str(event + " - " + modality)
                     report.add_stc(stc=stc_file, title=title,
                                 subject=self.subject, subjects_dir=self.fanat, 
                                 n_time_points=100)
-                except Exception as e:
-                    print(e)
-    
+                except Exception as ex:
+                    print(ex)
+
+    # add ECD pics
+            generic_pics_folder = os.path.join(self.spikes, event, "generic_pics")
+            drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
+            T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
+            matplotlib.rcParams["figure.facecolor"] = "black"
+            if drei != [] and T1 != []:
+                ECD_fig = self._plot_ECD_table(T1=T1, drei=drei, event=event)
+                caption = str(event + " - ECD")
+                report.add_figure(ECD_fig, title=caption, caption=caption)
+
+    # add custom pics and custom time series
+            custom_pics_folder = os.path.join(self.spikes, event, "custom_pics")
+            custom_pics = glob.glob(custom_pics_folder + "/*.png")
+            custom_ts_folder = os.path.join(self.spikes, e, "custom_time_series")
+            custom_ts = glob.glob(custom_ts_folder + "/*.png")
+            if custom_pics is not []:
+                for cst in custom_pics:
+                    cst_title = cst.split('/')[-1]
+                    cst_title = cst_title.split('.')[0]
+                    caption = event + ' - ' + cst_title
+                    report.add_image(cst, title=cst_title, caption=caption)
+            if custom_ts is not []:    
+                for _ in custom_ts:
+                    caption = event + ' - Time course'
+                    fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
+                    fig = self._plot_time_course(event=e)
+                    plt.tight_layout()
+                    report.add_figure(fig, title=caption, caption=caption)
+                    break
+
     # add frequency distribution
         #freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
         #with open(freq_file, "rb") as f:
