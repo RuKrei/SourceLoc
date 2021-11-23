@@ -78,9 +78,9 @@ use_single_shell_model = True                           # if 3-layer-BEM fails f
 # Crop stcs for report
 # epochs go from -1500ms to + 1000ms
 # -1500ms = 0, 1000ms = 2500
-# tmin/ tmax = in seconds --> 0.05 = 50ms
-stc_tmin = 1.350  # - 150 ms
-stc_tmax = 1.550
+# tmin/ tmax = in seconds --> 0.15 = 150ms
+stc_tmin = -0.15  # - 150 ms
+stc_tmax = 0.3
 
 ####################################################################
 ####################################################################
@@ -487,7 +487,13 @@ def main():
         else:
             try:
                 print(f"\n\n\nNow processing event: {event}")
-                e = concat_epochs[eventname].load_data().average()
+
+
+                # added cropping, does it work as it should??
+
+
+
+                e = concat_epochs[eventname].load_data().average().crop(tmin=-0.5, tmax=0.5)
                 e_folder = os.path.join(dfc.spikes, eventname)
                 evoked_filename = opj(e_folder, ject + "_" + eventname + "-ave.fif")
                 cp_folder = os.path.join(dfc.spikes, eventname, "custom_pics")
@@ -533,9 +539,9 @@ def main():
                         img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
                         img_f_name = os.path.join(gp_folder, img_f_name)
                         brain.save_image(img_f_name)
-                        stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m)
+                        stc_f_name = (ject + '_' + eventname + '_' + m)
                         stc_f_name = os.path.join(e_folder, stc_f_name)
-                        stc_name = stc_name.crop(tmin=-stc_tmin, tmax=stc_tmax)
+                        stc_name = stc_name.crop(tmin=stc_tmin, tmax=stc_tmax)
                         stc_name.save(stc_f_name)
                     else:
                         stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
@@ -554,7 +560,7 @@ def main():
                         brain.save_image(img_f_name)
                         stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m)
                         stc_f_name = os.path.join(e_folder, stc_f_name)
-                        stc_name = stc_name.crop(tmin=-stc_tmin, tmax=stc_tmax)
+                        stc_name = stc_name.crop(tmin=stc_tmin, tmax=stc_tmax)
                         stc_name.save(stc_f_name)
                         if m == "eLORETA":
                             rh_peaks = u.get_peak_points(stc_name, hemi='rh', tmin=peaks_tmin, 

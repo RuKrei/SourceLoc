@@ -157,7 +157,14 @@ class EpilepsyReportBuilder:
         desired_events = glob.glob(opj(self.spikes, "*"))
         print(f"Desired events are: {desired_events}")
 
-    # Add topomaps
+    # Add topomaps 
+
+    # To do:    add topomaps from cropped stcs, save (cropped) evokeds in spike-subfolder
+    #           use those as stcs for eLORETA below
+
+
+
+    
         epo_filename = opj(self.spikes, str(self.subject) + "-epo.fif")
         concat_epochs = mne.read_epochs(epo_filename)
         noise_cov_file = opj(self.spikes, "Spikes_noise_covariance.pkl")
