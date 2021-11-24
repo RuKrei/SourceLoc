@@ -282,7 +282,7 @@ class EpilepsyReportBuilder:
         report = mne.Report(subject=self.subject, subjects_dir=self.fanat, 
                         title=title, verbose=True)
 
-    # Add title image
+        # Add title image
         try:
             cover_file = opj(self.extras_dir, "MEG_title.png")
             cover_title = self.subject + " MEG Befund"
@@ -290,11 +290,11 @@ class EpilepsyReportBuilder:
         except FileNotFoundError as fnfe:
             rootlog.warning(f"MEG title page not found: {fnfe}")
 
-    # Event selection --> omit events by renaming the folder/ adding a . in front
+        # Event selection --> omit events by renaming the folder/ adding a . in front
         desired_events = glob.glob(opj(self.spikes, "*"))
         rootlog.info(f"The following event-folders were found:\n{desired_events}")
 
-    # Add topomaps
+        # Add topomaps
         epo_filename = opj(self.spikes, str(self.subject) + "-epo.fif")
         concat_epochs = mne.read_epochs(epo_filename)
         noise_cov_file = opj(self.spikes, "Spikes_noise_covariance.pkl")
@@ -310,7 +310,7 @@ class EpilepsyReportBuilder:
                 title = str(event + " - Topomap")
                 report.add_figure(fig, title=title)
 
-    # add stcs
+        # add stcs
                 modalities = ["eLORETA"]  # later also: "dSPM"?
                 rootlog.info(f"For event \"{event}\" the following stc-modalities were included: {modalities}.")
                 for modality in modalities:
@@ -323,7 +323,7 @@ class EpilepsyReportBuilder:
                     except Exception as ex:
                         rootlog.warning(f"Couldn't include {modality} - stc to report because of: {ex}")
 
-    # add ECD pics
+        # add ECD pics
                 rootlog.info(f"Now generating ECD-plot for {event}...")
                 generic_pics_folder = os.path.join(self.spikes, event, "generic_pics")
                 drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
@@ -334,7 +334,7 @@ class EpilepsyReportBuilder:
                     caption = str(event + " - ECD")
                     report.add_figure(ECD_fig, title=caption, caption=caption)
 
-    # add custom pics and custom time series
+        # add custom pics and custom time series
                 custom_pics_folder = os.path.join(self.spikes, event, "custom_pics")
                 custom_pics = glob.glob(custom_pics_folder + "/*.png")
                 custom_ts_folder = os.path.join(self.spikes, e, "custom_time_series")
@@ -356,13 +356,13 @@ class EpilepsyReportBuilder:
                         report.add_figure(fig, title=caption, caption=caption)
                         break
 
-    # add frequency distribution
-        #freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
-        #with open(freq_file, "rb") as f:
-        #    stc_freqs = load(f)
-        #title = str(self.subject.split("sub-")[-1] + " - Frequency distribution")
-        #report.add_stc(stc=stc_freqs, title=title,  # tags=("Frequency distribution"),
-        #                        subject=self.subject, subjects_dir=self.fanat)
+        # add frequency distribution
+            #freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
+            #with open(freq_file, "rb") as f:
+            #    stc_freqs = load(f)
+            #title = str(self.subject.split("sub-")[-1] + " - Frequency distribution")
+            #report.add_stc(stc=stc_freqs, title=title,  # tags=("Frequency distribution"),
+            #                        subject=self.subject, subjects_dir=self.fanat)
         
         freq_bands = ["delta", "theta", "alpha", "beta", "gamma"]                #the frequency bands of interest for the analysis    
         rootlog.info(f"Now adding frequency distribution...")
@@ -374,7 +374,7 @@ class EpilepsyReportBuilder:
             except Exception as ex:
                 rootlog.warning(f"Something went wrong trying to add freqs: {ex}")
         
-    # BEM
+        # BEM
         try:
             rootlog.info(f"Now adding BEM.")
             report.add_bem_to_section(self.subject, decim=4, subjects_dir=self.fanat, 
@@ -382,7 +382,7 @@ class EpilepsyReportBuilder:
         except ValueError as ve:
             rootlog.info("Could not add BEM to report, maybe a spherical model was used? Error was: {ve}")
 
-    # Add disclaimer image
+        # Add disclaimer image
         try:
             rootlog.info(f"Now adding Disclaimer.")
             disclaimer_file = opj(self.extras_dir, 'MEG_disclaimer.png')
@@ -390,7 +390,7 @@ class EpilepsyReportBuilder:
         except FileNotFoundError as fnfe:
             rootlog.warning(f"Disclaimer file not found - {e}")
             
-    # Save all
+        # Save all
         try:
             rootlog.info(f"Saving...")
             title = (self.subject + " _MEG_Befund.html")

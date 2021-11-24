@@ -3,7 +3,6 @@
 # License: BSD (3-clause)
 
 
-
 import os
 import argparse
 from os.path import join as opj
@@ -25,20 +24,10 @@ import logging
 ####################################################################
 ####################################################################
 ####################################################################
-# configuration
+# additional configuration parameters
 
-#laptop - test
-#bids_root = "/home/idrael/MEG/playground/BIDS_root"
-#extras_directory = "/home/idrael/MEG/playground/extras"
-#input_folder = "/home/idrael/MEG/playground/input_folder"
-
-# work
-#bids_root = "/run/media/meg/DATA/MEG/test_BIDS_clinic"
-#extras_directory = "/home/meg/Schreibtisch/new_patients/extras"
-#input_folder = "/home/meg/Schreibtisch/new_patients"
-
-#openmp = n_jobs = 8
-#spacing = "ico4"
+do_frequencies = True
+do_report = True
 
 # Filter and resample
 l_freq: float = 0.1    # lower pass-band edge
@@ -390,110 +379,111 @@ def main():
 
 
 # frequency spectrum
-    rootlog.info("Calculating frequency spectrum...")
-    bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
-    if not os.path.isfile(bem_sol) and use_single_shell_model:
-        rootlog.warning("Working with a single shell head model")
-        bem_sol = opj(dfc.fsrc, subject + "-single-shell-BEM-sol.fif")
-    fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
-    srcfilename = opj(dfc.fsrc, subject + "-" + spacing + "-src.fif")
-    filebase = str(subject) + "_Freqs"
-    all_stcs_filename = (filebase + '-stc-psd-MNE.pkl')
-    all_stcs_filename = opj(dfc.freq, all_stcs_filename)
-    sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
-    sensor_psd_filename = opj(dfc.freq, sensor_psd_filename)
-    if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):  # so this should run only on the first file..
-        # load again in case preprocessing didn't happen before
-        concatname = opj(input_folder, str(subject) + "_concat.fif")
-        raw = mne.io.read_raw(concatname, preload=True)
-        if os.path.isfile(fwd_name):
-            fwd = mne.read_forward_solution(fwd_name)
-        else:    
-            fwd = mne.make_forward_solution(raw.info, src=srcfilename, bem=bem_sol,
-                                            trans=transfile, 
-                                            meg=True, eeg=False, mindist=0.2, 
-                                            ignore_ref=False, 
-                                            n_jobs=n_jobs, verbose=True)
-            mne.write_forward_solution(fwd_name, fwd)
-        noise_cov = mne.compute_raw_covariance(raw, method="empirical", n_jobs=n_jobs)
-        inv = mne.minimum_norm.make_inverse_operator(raw.info, forward=fwd, noise_cov=noise_cov, 
-                                            loose="auto", depth=0.8)
-        snr = 3.
-        stc_psd, sensor_psd = mne.minimum_norm.compute_source_psd(raw, inv, lambda2=lambda2, 
-                                                method='MNE', 
-                                                fmin=1, fmax=45, n_fft=2048, n_jobs=n_jobs, 
-                                                return_sensor=True, verbose=True)
-        pickle.dump(stc_psd, open(all_stcs_filename, "wb"))
-        pickle.dump(sensor_psd, open(sensor_psd_filename, "wb"))
-    else:
-        stc_psd = pickle.load(open(all_stcs_filename, "rb"))
-        sensor_psd = pickle.load(open(sensor_psd_filename, "rb"))
-    # Visualization
-    topos = dict()
-    stcs = dict()
-    topo_norm = sensor_psd.data.sum(axis=1, keepdims=True)
-    stc_norm = stc_psd.sum()
-    for band, limits in freq_bands.items():         # normalize...
-        data = sensor_psd.copy().crop(*limits).data.sum(axis=1, keepdims=True)
-        topos[band] = mne.EvokedArray(100 * data / topo_norm, sensor_psd.info)
-        stcs[band] = 100 * stc_psd.copy().crop(*limits).sum() / stc_norm.data
-    brain = dict()
-    x_hemi_freq = dict()
-    mne.viz.set_3d_backend('pyvista')
-    for band in freq_bands.keys():
-        brain[band] = u.plot_freq_band_dors(stcs[band], band=band, subject=subject, 
-                                            subjects_dir=dfc.fanat, filebase=filebase)
-        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_dors.png')
-        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
-        image = brain[band].save_image(freqfilename3d)
-        brain_lh, brain_rh = u.plot_freq_band_lat(stcs[band], band=band, subject=subject, 
-                                                    subjects_dir=dfc.fanat,
-                                                    filebase=filebase)                                           
-        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_lh.png')
-        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
-        image = brain_lh.save_image(freqfilename3d)
-        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_rh.png')
-        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
-        image = brain_rh.save_image(freqfilename3d)
-        brain_lh, brain_rh = u.plot_freq_band_med(stcs[band], band=band, subject=subject, 
-                                                    subjects_dir=dfc.fanat,
-                                                    filebase=filebase)                                           
-        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_lh.png')
-        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
-        image = brain_lh.save_image(freqfilename3d)
-        freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_rh.png')
-        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
-        image = brain_rh.save_image(freqfilename3d)
-    # Cross hemisphere comparison
-        # make sure fsaverage_sym exists in local subjects dir:
-        rootlog.info(f"Calculating cross hemisphere comparison for {band}.")
-        target = os.path.join(dfc.fanat, "fsaverage_sym")
-        if not os.path.isdir(target):
-            # try to find it in $SUBJECTS_DIR and copy
-            os_subj_dir = os.environ.get("SUBJECTS_DIR")
-            fs_avg_sym_dir = os.path.join(os_subj_dir, "fsaverage_sym")
-            u.recursive_overwrite(fs_avg_sym_dir, target)
-        if not os.path.isdir(target):
-            rootlog.error("fsaverage_sym not found - aborting")
-            raise Exception
-        mstc = stcs[band].copy()
-        mstc = mne.compute_source_morph(mstc, subject, 'fsaverage_sym',
-                                                    smooth=5,
-                                                    warn=False,
-                                                    subjects_dir=dfc.fanat).apply(mstc)
-        morph = mne.compute_source_morph(mstc, 'fsaverage_sym', 'fsaverage_sym',
-                                                    spacing=mstc.vertices, warn=False,
-                                                    subjects_dir=dfc.fanat, xhemi=True,
-                                                    verbose='error')
-        stc_xhemi = morph.apply(mstc)
-        diff = mstc - stc_xhemi
-        title = ('blue = RH; ' + subject + ' -Freq-x_hemi- ' + band)
-        x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=dfc.fanat, 
-                                size=(1200, 800), time_label=title,
-                                add_data_kwargs=dict(time_label_size=10))
-        freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
-        freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
-        image = x_hemi_freq[band].save_image(freqfilename3d)
+    if do_frequencies:
+        rootlog.info("Calculating frequency spectrum...")
+        bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
+        if not os.path.isfile(bem_sol) and use_single_shell_model:
+            rootlog.warning("Working with a single shell head model")
+            bem_sol = opj(dfc.fsrc, subject + "-single-shell-BEM-sol.fif")
+        fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
+        srcfilename = opj(dfc.fsrc, subject + "-" + spacing + "-src.fif")
+        filebase = str(subject) + "_Freqs"
+        all_stcs_filename = (filebase + '-stc-psd-MNE.pkl')
+        all_stcs_filename = opj(dfc.freq, all_stcs_filename)
+        sensor_psd_filename = (filebase + '-sensor-psd-MNE.pkl')
+        sensor_psd_filename = opj(dfc.freq, sensor_psd_filename)
+        if not os.path.isfile(all_stcs_filename) or not os.path.isfile(sensor_psd_filename):  # so this should run only on the first file..
+            # load again in case preprocessing didn't happen before
+            concatname = opj(input_folder, str(subject) + "_concat.fif")
+            raw = mne.io.read_raw(concatname, preload=True)
+            if os.path.isfile(fwd_name):
+                fwd = mne.read_forward_solution(fwd_name)
+            else:    
+                fwd = mne.make_forward_solution(raw.info, src=srcfilename, bem=bem_sol,
+                                                trans=transfile, 
+                                                meg=True, eeg=False, mindist=0.2, 
+                                                ignore_ref=False, 
+                                                n_jobs=n_jobs, verbose=True)
+                mne.write_forward_solution(fwd_name, fwd)
+            noise_cov = mne.compute_raw_covariance(raw, method="empirical", n_jobs=n_jobs)
+            inv = mne.minimum_norm.make_inverse_operator(raw.info, forward=fwd, noise_cov=noise_cov, 
+                                                loose="auto", depth=0.8)
+            snr = 3.
+            stc_psd, sensor_psd = mne.minimum_norm.compute_source_psd(raw, inv, lambda2=lambda2, 
+                                                    method='MNE', 
+                                                    fmin=1, fmax=45, n_fft=2048, n_jobs=n_jobs, 
+                                                    return_sensor=True, verbose=True)
+            pickle.dump(stc_psd, open(all_stcs_filename, "wb"))
+            pickle.dump(sensor_psd, open(sensor_psd_filename, "wb"))
+        else:
+            stc_psd = pickle.load(open(all_stcs_filename, "rb"))
+            sensor_psd = pickle.load(open(sensor_psd_filename, "rb"))
+        # Visualization
+        topos = dict()
+        stcs = dict()
+        topo_norm = sensor_psd.data.sum(axis=1, keepdims=True)
+        stc_norm = stc_psd.sum()
+        for band, limits in freq_bands.items():         # normalize...
+            data = sensor_psd.copy().crop(*limits).data.sum(axis=1, keepdims=True)
+            topos[band] = mne.EvokedArray(100 * data / topo_norm, sensor_psd.info)
+            stcs[band] = 100 * stc_psd.copy().crop(*limits).sum() / stc_norm.data
+        brain = dict()
+        x_hemi_freq = dict()
+        mne.viz.set_3d_backend('pyvista')
+        for band in freq_bands.keys():
+            brain[band] = u.plot_freq_band_dors(stcs[band], band=band, subject=subject, 
+                                                subjects_dir=dfc.fanat, filebase=filebase)
+            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_dors.png')
+            freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+            image = brain[band].save_image(freqfilename3d)
+            brain_lh, brain_rh = u.plot_freq_band_lat(stcs[band], band=band, subject=subject, 
+                                                        subjects_dir=dfc.fanat,
+                                                        filebase=filebase)                                           
+            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_lh.png')
+            freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+            image = brain_lh.save_image(freqfilename3d)
+            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_lat_rh.png')
+            freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+            image = brain_rh.save_image(freqfilename3d)
+            brain_lh, brain_rh = u.plot_freq_band_med(stcs[band], band=band, subject=subject, 
+                                                        subjects_dir=dfc.fanat,
+                                                        filebase=filebase)                                           
+            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_lh.png')
+            freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+            image = brain_lh.save_image(freqfilename3d)
+            freqfilename3d = (filebase + '_' + band + '_freq_topomap_3d_med_rh.png')
+            freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+            image = brain_rh.save_image(freqfilename3d)
+        # Cross hemisphere comparison
+            # make sure fsaverage_sym exists in local subjects dir:
+            rootlog.info(f"Calculating cross hemisphere comparison for {band}.")
+            target = os.path.join(dfc.fanat, "fsaverage_sym")
+            if not os.path.isdir(target):
+                # try to find it in $SUBJECTS_DIR and copy
+                os_subj_dir = os.environ.get("SUBJECTS_DIR")
+                fs_avg_sym_dir = os.path.join(os_subj_dir, "fsaverage_sym")
+                u.recursive_overwrite(fs_avg_sym_dir, target)
+            if not os.path.isdir(target):
+                rootlog.error("fsaverage_sym not found - aborting")
+                raise Exception
+            mstc = stcs[band].copy()
+            mstc = mne.compute_source_morph(mstc, subject, 'fsaverage_sym',
+                                                        smooth=5,
+                                                        warn=False,
+                                                        subjects_dir=dfc.fanat).apply(mstc)
+            morph = mne.compute_source_morph(mstc, 'fsaverage_sym', 'fsaverage_sym',
+                                                        spacing=mstc.vertices, warn=False,
+                                                        subjects_dir=dfc.fanat, xhemi=True,
+                                                        verbose='error')
+            stc_xhemi = morph.apply(mstc)
+            diff = mstc - stc_xhemi
+            title = ('blue = RH; ' + subject + ' -Freq-x_hemi- ' + band)
+            x_hemi_freq[band] = diff.plot(hemi='lh', subjects_dir=dfc.fanat, 
+                                    size=(1200, 800), time_label=title,
+                                    add_data_kwargs=dict(time_label_size=10))
+            freqfilename3d = (filebase + '_x_hemi_' + band + '.png')
+            freqfilename3d = os.path.join(dfc.freq, freqfilename3d)
+            image = x_hemi_freq[band].save_image(freqfilename3d)
 
 
 # Source localization
@@ -501,6 +491,7 @@ def main():
     epo_filename = opj(dfc.spikes, str(subject) + "-epo.fif")
     concat_epochs = mne.read_epochs(epo_filename)
     noise_cov_file = opj(dfc.spikes, "Spikes_noise_covariance.pkl")
+    srcfilename = opj(dfc.fsrc, subject + "-" + spacing + "-src.fif")
     if not os.path.isfile(noise_cov_file):
         noise_cov = mne.compute_covariance(concat_epochs, tmax=-1., 
                                     method='auto',
@@ -514,7 +505,7 @@ def main():
     rootlog.info(f"The following events have been found: \n{concat_epochs.event_id.keys()}")
     for event in concat_epochs.event_id.keys():
         eventname = str(event)
-        if eventname == "ignore_me" or eventname == "AAA" or eventname.startswith(".ungrouped"):
+        if eventname == "ignore_me" or eventname == "AAA" or eventname.startswith("."):
             rootlog.info(f"Omitting event {event}")
         else:
             try:
@@ -544,15 +535,28 @@ def main():
                                             meg=True, eeg=False, mindist=0.2, 
                                             ignore_ref=False, 
                                             n_jobs=n_jobs, verbose=True)
+                # inv for cortical surface
                 inv = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd, noise_cov=noise_cov, 
                                             loose=0.2, depth=0.8)
+                # inv with volume source space
+                vol_srcfilename = opj(dfc.fsrc, subject  + "-vol-src.fif")
+                src_vol = mne.read_source_spaces(vol_srcfilename)
+                fwd_vol = mne.make_forward_solution(e.info, src=src_vol, bem=bem_sol,
+                                            trans=transfile, 
+                                            meg=True, eeg=False, mindist=0.2, 
+                                            ignore_ref=False, 
+                                            n_jobs=n_jobs, verbose=True)
+                inv_vol = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd_vol, noise_cov=noise_cov, 
+                                            loose=0.2, depth=0.8)
+                
                 # Distributed source models
                 for m in source_loc_methods:
                     stc_name = 'stc_' + m
                     if m == 'dSPM':
+                        # calculate vector solution in volume source space
                         try:
-                            rootlog.info("Now calculating dSPM...")
-                            stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
+                            rootlog.info("Now calculating dSPM vector solution...")
+                            stc_name = mne.minimum_norm.apply_inverse(e, inv_vol, lambda2,
                                         method='dSPM', pick_ori='vector')
                             surfer_kwargs = dict(hemi='split', subjects_dir=dfc.fanat,
                                         clim=dict(kind='percent', lims=[90, 96, 99.85]),
@@ -566,10 +570,10 @@ def main():
                             img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
                             img_f_name = os.path.join(gp_folder, img_f_name)
                             brain.save_image(img_f_name)
-                            stc_f_name = (ject + '_' + eventname + '_' + m)
+                            stc_f_name = ("stc_" + ject + '_' + eventname + '_' + m + ".h5")
                             stc_f_name = os.path.join(e_folder, stc_f_name)
                             stc_name = stc_name.crop(tmin=stc_tmin, tmax=stc_tmax)
-                            rootlog.info("Saving dSPM.")
+                            rootlog.info("Saving dSPM vector solution.")
                             stc_name.save(stc_f_name)
                         except Exception as ex:
                             rootlog.error(f"dSPM failed --> {ex}")
@@ -644,9 +648,10 @@ def main():
                 rootlog.error(f"Source localization failed because of:\n {ex}")
     
     # Create report
-    reporter = Reporter.EpilepsyReportBuilder(derivatives_root=derivatives_root, subject=subject, 
-                                    extras_dir=extras_directory)
-    reporter.create_report()
+    if do_report:
+        reporter = Reporter.EpilepsyReportBuilder(derivatives_root=derivatives_root, subject=subject, 
+                                        extras_dir=extras_directory)
+        reporter.create_report()
     
     # Last words
     logging.info("Finished SourceLocPipeline.")
