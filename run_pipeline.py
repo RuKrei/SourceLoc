@@ -12,8 +12,8 @@ import mne
 from mne_bids import make_dataset_description, \
                         BIDSPath, write_anat, write_raw_bids, \
                         read_raw_bids
-from src.utils import utils as u
-from src import Anatomist, Folderer
+from src import Utils as u
+from src import Anatomist, Folderer, Reporter
 import platform
 import pickle
 import matplotlib.pyplot as plt
@@ -29,7 +29,7 @@ import logging
 
 #laptop - test
 #bids_root = "/home/idrael/MEG/playground/BIDS_root"
-extras_directory = "/home/idrael/MEG/playground/extras"
+#extras_directory = "/home/idrael/MEG/playground/extras"
 #input_folder = "/home/idrael/MEG/playground/input_folder"
 
 # work
@@ -642,6 +642,13 @@ def main():
                     rootlog.error(f"ECD calculation failed --> {ex}")
             except Exception as ex:
                 rootlog.error(f"Source localization failed because of:\n {ex}")
+    
+    # Create report
+    reporter = Reporter.EpilepsyReportBuilder(derivatives_root=derivatives_root, subject=subject, 
+                                    extras_dir=extras_directory)
+    reporter.create_report()
+    
+    # Last words
     logging.info("Finished SourceLocPipeline.")
     print("SourceLocPipeline completed!")
   

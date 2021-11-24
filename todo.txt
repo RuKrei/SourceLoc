@@ -1,21 +1,17 @@
-check if input anatomy files are handled correctly
--- if freesurfer segmentation exists...
--- if nifti-file exists
+next:
+ - volume source space dSPM + eLORETA
+ - - calculate
+ - - display with Visualizer.py
+ - - include in Report.py
 
-check for 1 fif w and w/o _Events.csv if handled properly
+ - connectivity
+ - - calculate
+ - - display with Visualizer.py
+ - - include in Report.py
 
-adapt for multiple input files
 
-write a postprocessor.ipynb - file
--- add 3d viz in notebook?
 
-test report
 
-update preprocessing + output of preprocessing
--- plot_alignment()
--- PSD befor/after filtering
--- sensitivity maps
--- segmentation
+- automatically copy report.html to predefined folder/ cloud
 
-automatically send report.html to predefined email
 
