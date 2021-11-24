@@ -28,9 +28,9 @@ import logging
 # configuration
 
 #laptop - test
-bids_root = "/home/idrael/MEG/playground/BIDS_root"
+#bids_root = "/home/idrael/MEG/playground/BIDS_root"
 extras_directory = "/home/idrael/MEG/playground/extras"
-input_folder = "/home/idrael/MEG/playground/input_folder"
+#input_folder = "/home/idrael/MEG/playground/input_folder"
 
 # work
 #bids_root = "/run/media/meg/DATA/MEG/test_BIDS_clinic"
@@ -111,6 +111,8 @@ def main():
                             oct5 --> 1026 Source points \
                             || oct6 --> 4098 Source points \
                             || ico5 --> 10242 Source points")
+    parser.add_argument("--extras", action="store", type=str, required=False, 
+                        help="Specify directory containing extras for report")
 
     args = parser.parse_args()  
 
@@ -126,6 +128,29 @@ def main():
         subject = "sub-" + subject
     else:
         ject = subject.split("sub-")[-1]
+
+# additional arguments
+    if args.bidsroot:
+        bids_root = args.bidsroot
+    else:
+        bids_root = os.environ.get("BIDS_ROOT")
+
+    if args.openmp:
+        n_jobs = openmp = int(args.openmp)
+    else:
+        n_jobs = openmp = int(os.environ.get("OPENMP"))
+        if n_jobs == None:
+            n_jobs = openmp = int(1)
+
+    if args.inputfolder:
+        input_folder = args.inputfolder
+    else:
+        input_folder = os.environ.get("INPUT_FOLDER")
+
+    if args.extras:
+        extras_directory = args.extras
+    else:
+        extras_directory = os.environ.get("EXTRAS_DIRECTORY")
     
 # create folder structure and copy 
     dfc = Folderer.DerivativesFoldersCreator(BIDS_root=bids_root, 
@@ -139,34 +164,39 @@ def main():
                         format="\n%(levelname)s --> %(message)s")
     rootlog = logging.getLogger()
     rootlog.setLevel(logging.INFO)
-    rootlog.info(f"Subject = {ject}")
     rootlog.info("Now running SourceLoc pipeline...")
-    rootlog.info("Folder structure created.")
+    
+# log parameters
+    rootlog.info(f"*" * 20)
+    rootlog.info("Parameters")
+    rootlog.info(f"*" * 20)
+    rootlog.info(f"Subject name = {ject}")
+    rootlog.info(f"Input folder is set to: {input_folder}.")
+    rootlog.info(f"BIDS root is set to: {bids_root}.")
+    rootlog.info(f"Extras directory is set to: {extras_directory}.")
+    rootlog.info(f"Using {openmp} processor cores/ jobs.")
+    rootlog.info("Folder structure has been created.")
 
-# freesurfer subjects_dir
-    FS_SUBJECTS_DIR = os.environ.get("SUBJECTS_DIR")
+# check if freesurfer subjects_dir exists
+    FS_SUBJECTS_DIR = str(os.environ.get("SUBJECTS_DIR"))
     if FS_SUBJECTS_DIR == None:
         print(f"It seems freesurfer is not properly set up on your computer")
         rootlog.warning("No working freesurfer environment found - SUBJECTS_DIR is not set")
 
-# additional arguments
-    if args.openmp:
-        n_jobs = openmp = int(args.openmp)
-    else:
-        n_jobs = openmp = int(1)
-    rootlog.info(f"Using {openmp} processor cores/ jobs.")
-    
+# check if source spacing was set + is valid
     if not args.srcspacing:
-        spacing = "ico4"
+        spacing = str(os.environ.get("SRCSPACING"))
+        if not spacing:
+            spacing = "oct6"
     else:
         spacing = args.srcspacing
-    if not spacing in ["ico4", "oct5", "oct6", "ico5"]:
-        rootlog.info('The desired spacing isn\'t allowed, typo?\n \
-                            Options are: "ico4", "oct5", "oct6", "ico5"')
-        rootlog.error(f"The desired spacing ({spacing})isn\'t allowed - pipeline aborted")
-        raise Exception
-    rootlog.info(f"Desired source spacing is {spacing}")
-
+    if spacing not in ["ico4", "oct5", "oct6", "ico5"]:
+        spacing = "oct6"
+        print('The desired spacing isn\'t allowed, typo?\n \
+                        Options are: "ico4", "oct5", "oct6", "ico5"\n \
+                        --> spacing was automatically set to "oct6".')
+        rootlog.warning("Spacing was set to \"oct6\", as input given was invalid.")
+    rootlog.info(f"Final source spacing is {spacing}.")
 
 # MRI to nii.gz, then freesurfer, then hippocampal subfields
 # Naturally, this only works with a freesurfer environment 
@@ -613,6 +643,7 @@ def main():
             except Exception as ex:
                 rootlog.error(f"Source localization failed because of:\n {ex}")
     logging.info("Finished SourceLocPipeline.")
+    print("SourceLocPipeline completed!")
   
 
 if __name__ == '__main__':
