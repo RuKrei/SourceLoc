@@ -79,7 +79,7 @@ stc_tmax = 0.3
 
 
 def main():
-    splitter = "\\" if platform.system().lower().startswith("win") else "/"
+    #splitter = "\\" if platform.system().lower().startswith("win") else "/"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--subject", action="store", 
@@ -105,19 +105,6 @@ def main():
 
     args = parser.parse_args()  
 
-# define subject
-    subject = args.subject    
-    if not subject:
-        poss = [s for s in os.listdir(input_folder)]
-        print(f"No subject specified, maybe you want to choose from those:\n {poss}")
-        subject = input()
-
-    if not subject.startswith("sub-"):
-        ject = str(subject)
-        subject = "sub-" + subject
-    else:
-        ject = subject.split("sub-")[-1]
-
 # additional arguments
     if args.bidsroot:
         bids_root = args.bidsroot
@@ -140,7 +127,20 @@ def main():
         extras_directory = args.extras
     else:
         extras_directory = os.environ.get("EXTRAS_DIRECTORY")
-    
+
+# define subject
+    subject = args.subject    
+    if not subject:
+        poss = [s for s in os.listdir(input_folder)]
+        print(f"No subject specified, maybe you want to choose from those:\n {poss}")
+        subject = input()
+
+    if not subject.startswith("sub-"):
+        ject = str(subject)
+        subject = "sub-" + subject
+    else:
+        ject = subject.split("sub-")[-1]
+
 # create folder structure and copy 
     dfc = Folderer.DerivativesFoldersCreator(BIDS_root=bids_root, 
                                             extras_directory=extras_directory, 
@@ -243,6 +243,8 @@ def main():
                         # epochs
                         epochs = prepper.raw_to_epoch(rawfile)
                         if epochs is not None:
+                            epochs = epochs.load_data().filter(l_freq=l_freq, fir_design=fir_design,
+                                                    h_freq=h_freq, n_jobs=n_jobs)
                             epo_filename = rawfile.strip(".fif") + "-epo.fif"
                             epochs.save(epo_filename, overwrite=True)
                         # preprocessing
@@ -299,7 +301,6 @@ def main():
             concat_epochs.save(epo_filename)
 
 
-
         # concatenate filtered and resampled files
         raws = glob.glob(input_folder + "/*.fif")
         raws = [f for f in raws if ject in f]
@@ -323,7 +324,6 @@ def main():
             raw.apply_proj()
             rootlog.info(f"Saving concatenated rawfile as {concatname}")
             raw.save(concatname)
-
 
 
         # Save in BIDS format
@@ -547,7 +547,7 @@ def main():
                                             ignore_ref=False, 
                                             n_jobs=n_jobs, verbose=True)
                 inv_vol = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd_vol, noise_cov=noise_cov, 
-                                            loose=0.2, depth=0.8)
+                                            loose=1, depth=0.8)
                 
                 # Distributed source models
                 for m in source_loc_methods:
