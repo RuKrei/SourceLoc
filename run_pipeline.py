@@ -31,7 +31,7 @@ do_report = True
 
 # Filter and resample
 l_freq: float = 0.1    # lower pass-band edge
-h_freq: float = 70.   # higher pass-band edge
+h_freq: float = 50.   # higher pass-band edge
 fir_design: str = "firwin"
 s_freq: int = 300
 # ECG artifact correction
@@ -46,7 +46,7 @@ freq_bands = dict(                #the frequency bands of interest for the analy
                 theta=(4, 7), 
                 alpha=(8, 12), 
                 beta=(13, 29), 
-                gamma=(30, 80))
+                gamma=(30, 50))
 
 # Source localization
 source_loc_methods = ["dSPM", "eLORETA"]
@@ -558,7 +558,7 @@ def main():
                             rootlog.info("Now calculating dSPM vector solution...")
                             stc_name = mne.minimum_norm.apply_inverse(e, inv_vol, lambda2,
                                         method='dSPM', pick_ori='vector')
-                            surfer_kwargs = dict(hemi='split', subjects_dir=dfc.fanat,
+                            surfer_kwargs = dict(subjects_dir=dfc.fanat, # hemi='split', 
                                         clim=dict(kind='percent', lims=[90, 96, 99.85]),
                                         views=['lat', 'med'], 
                                         colorbar=True,
