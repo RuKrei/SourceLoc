@@ -408,13 +408,28 @@ def main():
                         help="Specify the BIDS root folder")
     parser.add_argument("--subject", action="store", type=str, required=True, 
                         help="Subject name")
-    parser.add_argument("--extras_dir", action="store", type=str, required=True, 
+    parser.add_argument("--extras_dir", action="store", type=str, required=False, 
                         help="Extras directory")
 
     args = parser.parse_args()
+
+    # additional arguments
+    subject = args.subject
+    if not subject.startswith("sub-"):
+        subject = "sub-" + subject
+
+    if args.extras_dir:
+        extras_directory = args.extras_dir
+    else:
+        extras_directory = os.environ.get("EXTRAS_DIRECTORY")
     
-    reporter = EpilepsyReportBuilder(derivatives_root=args.derivatives_root, subject=args.subject, 
-                                    extras_dir=args.extras_dir)
+    if args.derivatives_root:
+        derivatives_root = args.derivatives_root
+    else:
+        derivatives_root = os.environ.get("DERIVATIVES_ROOT")   
+    
+    reporter = EpilepsyReportBuilder(derivatives_root=derivatives_root, subject=subject, 
+                                    extras_dir=extras_directory)
     reporter.create_report()
     
 if __name__ == '__main__':
