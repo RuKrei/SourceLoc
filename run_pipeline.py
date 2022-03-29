@@ -290,15 +290,16 @@ def main():
         if not os.path.isfile(epo_filename):
             epoch_files = glob.glob(input_folder + "/*-epo.fif")
             epoch_files = [f for f in epoch_files if ject in f]
-            all_epochs = dict()
-            rootlog.info("Concatenating epochs now...")
-            for f in epoch_files:
-                all_epochs[f] = mne.read_epochs(f)
-            concat_epochs = mne.concatenate_epochs([all_epochs[f] for f in epoch_files])
-            concat_epochs.add_proj(all_projs, remove_existing=True)
-            concat_epochs.apply_proj()
-            rootlog.info(f"Saving concatenated epoch file as {epo_filename}")
-            concat_epochs.save(epo_filename)
+            if epoch_files != []:
+                all_epochs = dict()
+                rootlog.info("Concatenating epochs now...")
+                for f in epoch_files:
+                    all_epochs[f] = mne.read_epochs(f)
+                concat_epochs = mne.concatenate_epochs([all_epochs[f] for f in epoch_files])
+                concat_epochs.add_proj(all_projs, remove_existing=True)
+                concat_epochs.apply_proj()
+                rootlog.info(f"Saving concatenated epoch file as {epo_filename}")
+                concat_epochs.save(epo_filename)
 
 
         # concatenate filtered and resampled files
@@ -487,165 +488,168 @@ def main():
 
 
 # Source localization
-    rootlog.info("Now starting source localization...")
     epo_filename = opj(dfc.spikes, str(subject) + "-epo.fif")
-    concat_epochs = mne.read_epochs(epo_filename)
-    noise_cov_file = opj(dfc.spikes, "Spikes_noise_covariance.pkl")
-    srcfilename = opj(dfc.fsrc, subject + "-" + spacing + "-src.fif")
-    if not os.path.isfile(noise_cov_file):
-        noise_cov = mne.compute_covariance(concat_epochs, tmax=-1., 
-                                    method='auto',
-                                    n_jobs=n_jobs,
-                                    rank="full")
-        pickle.dump(noise_cov, open(noise_cov_file, "wb"))
-    else:
-        with open(noise_cov_file, 'rb') as f:
-            noise_cov = pickle.load(f)
-    
-    rootlog.info(f"The following events have been found: \n{concat_epochs.event_id.keys()}")
-    for event in concat_epochs.event_id.keys():
-        eventname = str(event)
-        if eventname == "ignore_me" or eventname == "AAA" or eventname.startswith("."):
-            rootlog.info(f"Omitting event {event}")
+    if os.path.isfile(epo_filename):
+        rootlog.info("Now starting source localization...")
+        concat_epochs = mne.read_epochs(epo_filename)
+        noise_cov_file = opj(dfc.spikes, "Spikes_noise_covariance.pkl")
+        srcfilename = opj(dfc.fsrc, subject + "-" + spacing + "-src.fif")
+        if not os.path.isfile(noise_cov_file):
+            noise_cov = mne.compute_covariance(concat_epochs, tmax=-1., 
+                                        method='auto',
+                                        n_jobs=n_jobs,
+                                        rank="full")
+            pickle.dump(noise_cov, open(noise_cov_file, "wb"))
         else:
-            try:
-                rootlog.info(f"Now localizing event: {event}")
-                e = concat_epochs[eventname].load_data().crop(tmin=-0.5, tmax=0.5).average()
-                e_folder = os.path.join(dfc.spikes, eventname)
-                evoked_filename = opj(e_folder, ject + "_" + eventname + "-ave.fif")
-                cp_folder = os.path.join(dfc.spikes, eventname, "custom_pics")
-                cts_folder = os.path.join(dfc.spikes, eventname, "custom_time_series")
-                gp_folder = os.path.join(dfc.spikes, eventname, "generic_pics")
-                folders = [e_folder, cp_folder, cts_folder, gp_folder]
-                if not os.path.isdir(e_folder):
-                    for f in folders:
-                        os.mkdir(f)
-                e.save(evoked_filename)
-                src = mne.read_source_spaces(srcfilename)
-                bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
-                if not os.path.isfile(bem_sol) and use_single_shell_model:
-                    bem_sol = opj(dfc.fsrc, subject + "-single-shell-BEM-sol.fif")
+            with open(noise_cov_file, 'rb') as f:
+                noise_cov = pickle.load(f)
 
-                fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
-                if os.path.isfile(fwd_name):
-                    fwd = mne.read_forward_solution(fwd_name)
-                else:
-                    fwd = mne.make_forward_solution(e.info, src=src, bem=bem_sol,
-                                            trans=transfile, 
-                                            meg=True, eeg=False, mindist=0.2, 
-                                            ignore_ref=False, 
-                                            n_jobs=n_jobs, verbose=True)
-                # inv for cortical surface
-                inv = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd, noise_cov=noise_cov, 
-                                            loose=0.2, depth=0.8)
-                # inv with volume source space
-                vol_srcfilename = opj(dfc.fsrc, subject  + "-vol-src.fif")
-                src_vol = mne.read_source_spaces(vol_srcfilename)
-                fwd_vol = mne.make_forward_solution(e.info, src=src_vol, bem=bem_sol,
-                                            trans=transfile, 
-                                            meg=True, eeg=False, mindist=0.2, 
-                                            ignore_ref=False, 
-                                            n_jobs=n_jobs, verbose=True)
-                inv_vol = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd_vol, noise_cov=noise_cov, 
-                                            loose=1, depth=0.8)
-                
-                # Distributed source models
-                for m in source_loc_methods:
-                    stc_name = 'stc_' + m
-                    if m == 'dSPM':
-                        # calculate vector solution in volume source space
-                        try:
-                            rootlog.info("Now calculating dSPM vector solution...")
-                            stc_name = mne.minimum_norm.apply_inverse(e, inv_vol, lambda2,
-                                        method='dSPM', pick_ori='vector')
-                            surfer_kwargs = dict(subjects_dir=dfc.fanat, # hemi='split', 
+        rootlog.info(f"The following events have been found: \n{concat_epochs.event_id.keys()}")
+        for event in concat_epochs.event_id.keys():
+            eventname = str(event)
+            if eventname == "ignore_me" or eventname == "AAA" or eventname.startswith("."):
+                rootlog.info(f"Omitting event {event}")
+            else:
+                try:
+                    rootlog.info(f"Now localizing event: {event}")
+                    e = concat_epochs[eventname].load_data().crop(tmin=-0.5, tmax=0.5).average()
+                    e_folder = os.path.join(dfc.spikes, eventname)
+                    evoked_filename = opj(e_folder, ject + "_" + eventname + "-ave.fif")
+                    cp_folder = os.path.join(dfc.spikes, eventname, "custom_pics")
+                    cts_folder = os.path.join(dfc.spikes, eventname, "custom_time_series")
+                    gp_folder = os.path.join(dfc.spikes, eventname, "generic_pics")
+                    folders = [e_folder, cp_folder, cts_folder, gp_folder]
+                    if not os.path.isdir(e_folder):
+                        for f in folders:
+                            os.mkdir(f)
+                    e.save(evoked_filename)
+                    src = mne.read_source_spaces(srcfilename)
+                    bem_sol = opj(dfc.fsrc, subject + "-3-layer-BEM-sol.fif")
+                    if not os.path.isfile(bem_sol) and use_single_shell_model:
+                        bem_sol = opj(dfc.fsrc, subject + "-single-shell-BEM-sol.fif")
+
+                    fwd_name = opj(dfc.fsrc, subject + "-fwd.fif")
+                    if os.path.isfile(fwd_name):
+                        fwd = mne.read_forward_solution(fwd_name)
+                    else:
+                        fwd = mne.make_forward_solution(e.info, src=src, bem=bem_sol,
+                                                trans=transfile, 
+                                                meg=True, eeg=False, mindist=0.2, 
+                                                ignore_ref=False, 
+                                                n_jobs=n_jobs, verbose=True)
+                    # inv for cortical surface
+                    inv = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd, noise_cov=noise_cov, 
+                                                loose=0.2, depth=0.8)
+                    # inv with volume source space
+                    vol_srcfilename = opj(dfc.fsrc, subject  + "-vol-src.fif")
+                    src_vol = mne.read_source_spaces(vol_srcfilename)
+                    fwd_vol = mne.make_forward_solution(e.info, src=src_vol, bem=bem_sol,
+                                                trans=transfile, 
+                                                meg=True, eeg=False, mindist=0.2, 
+                                                ignore_ref=False, 
+                                                n_jobs=n_jobs, verbose=True)
+                    inv_vol = mne.minimum_norm.make_inverse_operator(e.info, forward=fwd_vol, noise_cov=noise_cov, 
+                                                loose=1, depth=0.8)
+
+                    # Distributed source models
+                    for m in source_loc_methods:
+                        stc_name = 'stc_' + m
+                        if m == 'dSPM':
+                            # calculate vector solution in volume source space
+                            try:
+                                rootlog.info("Now calculating dSPM vector solution...")
+                                stc_name = mne.minimum_norm.apply_inverse(e, inv_vol, lambda2,
+                                            method='dSPM', pick_ori='vector')
+                                surfer_kwargs = dict(subjects_dir=dfc.fanat, # hemi='split', 
+                                            clim=dict(kind='percent', lims=[90, 96, 99.85]),
+                                            views=['lat', 'med'], 
+                                            colorbar=True,
+                                            initial_time=0, time_unit='ms', 
+                                            size=(1000, 800), smoothing_steps=10)
+                                brain = stc_name.plot(**surfer_kwargs)
+                                label = str(ject + " - " + eventname + " - Vector solution")
+                                brain.add_text(0.1, 0.9, label, 'title', font_size=10)
+                                img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
+                                img_f_name = os.path.join(gp_folder, img_f_name)
+                                brain.save_image(img_f_name)
+                                stc_f_name = ("stc_" + ject + '_' + eventname + '_' + m + ".h5")
+                                stc_f_name = os.path.join(e_folder, stc_f_name)
+                                stc_name = stc_name.crop(tmin=stc_tmin, tmax=stc_tmax)
+                                rootlog.info("Saving dSPM vector solution.")
+                                stc_name.save(stc_f_name)
+                            except Exception as ex:
+                                rootlog.error(f"dSPM failed --> {ex}")
+                        else:
+                            stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
+                                        method=m, pick_ori=None)
+                            surfer_kwargs = dict(hemi='split', subjects_dir=dfc.fanat,
                                         clim=dict(kind='percent', lims=[90, 96, 99.85]),
                                         views=['lat', 'med'], 
                                         colorbar=True,
                                         initial_time=0, time_unit='ms', 
                                         size=(1000, 800), smoothing_steps=10)
                             brain = stc_name.plot(**surfer_kwargs)
-                            label = str(ject + " - " + eventname + " - Vector solution")
+                            label = str(ject + " - " + eventname + " - " +  m)
                             brain.add_text(0.1, 0.9, label, 'title', font_size=10)
                             img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
                             img_f_name = os.path.join(gp_folder, img_f_name)
                             brain.save_image(img_f_name)
-                            stc_f_name = ("stc_" + ject + '_' + eventname + '_' + m + ".h5")
+                            stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m)
                             stc_f_name = os.path.join(e_folder, stc_f_name)
                             stc_name = stc_name.crop(tmin=stc_tmin, tmax=stc_tmax)
-                            rootlog.info("Saving dSPM vector solution.")
+                            rootlog.info("Saving eLORETA.")
                             stc_name.save(stc_f_name)
-                        except Exception as ex:
-                            rootlog.error(f"dSPM failed --> {ex}")
-                    else:
-                        stc_name = mne.minimum_norm.apply_inverse(e, inv, lambda2,
-                                    method=m, pick_ori=None)
-                        surfer_kwargs = dict(hemi='split', subjects_dir=dfc.fanat,
-                                    clim=dict(kind='percent', lims=[90, 96, 99.85]),
-                                    views=['lat', 'med'], 
-                                    colorbar=True,
-                                    initial_time=0, time_unit='ms', 
-                                    size=(1000, 800), smoothing_steps=10)
-                        brain = stc_name.plot(**surfer_kwargs)
-                        label = str(ject + " - " + eventname + " - " +  m)
-                        brain.add_text(0.1, 0.9, label, 'title', font_size=10)
-                        img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '.png')
-                        img_f_name = os.path.join(gp_folder, img_f_name)
-                        brain.save_image(img_f_name)
-                        stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m)
-                        stc_f_name = os.path.join(e_folder, stc_f_name)
-                        stc_name = stc_name.crop(tmin=stc_tmin, tmax=stc_tmax)
-                        rootlog.info("Saving eLORETA.")
-                        stc_name.save(stc_f_name)
-                        if m == "eLORETA":
-                            try:
-                                rootlog.info("Now calculating eLORETA with peaks...")
-                                rh_peaks = u.get_peak_points(stc_name, hemi='rh', tmin=peaks_tmin, 
-                                                            tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
-                                lh_peaks = u.get_peak_points(stc_name, hemi='lh', tmin=peaks_tmin, 
-                                                            tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
-                                label = str(ject + " - " + eventname + " - " +  m + " - max. activation points")
-                                brain.add_text(0.1, 0.9, label, font_size=10)   #, 'title'
-                                for p in rh_peaks:
-                                    brain.add_foci(p, color='green', coords_as_verts=True, hemi='rh', scale_factor=0.6, alpha=0.9)
-                                for p in lh_peaks:
-                                    brain.add_foci(p, color='green', coords_as_verts=True, hemi='lh', scale_factor=0.6, alpha=0.9)
-                                stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m + "_with_peaks-ave")
-                                stc_f_name = os.path.join(e_folder, stc_f_name)
-                                stc_name.save(stc_f_name)
-                                img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '_with_peaks.png')
-                                img_f_name = os.path.join(gp_folder, img_f_name)
-                                brain.save_image(img_f_name)
-                            except Exception as ex:
-                                rootlog.error(f"eLORETA with peaks failed --> {ex}")
-                # Dipoles
-                rootlog.info("Now calculating ECD.")
-                try:
-                    for start, stop in dip_times.values():
-                        dip_epoch = e.copy().crop(start, stop).pick('meg')
-                        ecd = mne.fit_dipole(dip_epoch, noise_cov, bem_sol, trans=transfile)[0]
-                        best_idx = np.argmax(ecd.gof)
-                        best_time = ecd.times[best_idx]
-                        trans = mne.read_trans(transfile)
-                        mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subject, subjects_dir=dfc.fanat)
-                        t1_file_name = os.path.join(dfc.fanat, subject, 'mri', 'T1.mgz')
-                        stoptime = str(abs(int(stop*int(e.info["sfreq"]))))
-                        if stoptime == "5":
-                            stoptime = "05"
-                        title = str(eventname + ' - ECD @ minus ' + stoptime + ' ms')
-                        t1_fig = plot_anat(t1_file_name, cut_coords=mri_pos[0], title=title)
-                        t1_f_name_pic = ('img_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
-                        t1_f_name_pic = os.path.join(e_folder, "generic_pics", t1_f_name_pic)
-                        t1_fig.savefig(t1_f_name_pic)
-                        fig_3d = ecd.plot_locations(trans, subject, dfc.fanat, mode="orthoview")
-                        fig_3d_pic = ('img_3d_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
-                        fig_3d_pic = os.path.join(e_folder, "generic_pics", fig_3d_pic)
-                        fig_3d.savefig(fig_3d_pic)
-                        plt.close("all")
+                            if m == "eLORETA":
+                                try:
+                                    rootlog.info("Now calculating eLORETA with peaks...")
+                                    rh_peaks = u.get_peak_points(stc_name, hemi='rh', tmin=peaks_tmin, 
+                                                                tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
+                                    lh_peaks = u.get_peak_points(stc_name, hemi='lh', tmin=peaks_tmin, 
+                                                                tmax=peaks_tmax, nr_points=peaks_nr_of_points, mode=peaks_mode)
+                                    label = str(ject + " - " + eventname + " - " +  m + " - max. activation points")
+                                    brain.add_text(0.1, 0.9, label, font_size=10)   #, 'title'
+                                    for p in rh_peaks:
+                                        brain.add_foci(p, color='green', coords_as_verts=True, hemi='rh', scale_factor=0.6, alpha=0.9)
+                                    for p in lh_peaks:
+                                        brain.add_foci(p, color='green', coords_as_verts=True, hemi='lh', scale_factor=0.6, alpha=0.9)
+                                    stc_f_name = ('stc_' + ject + '_' + eventname + '_' + m + "_with_peaks-ave")
+                                    stc_f_name = os.path.join(e_folder, stc_f_name)
+                                    stc_name.save(stc_f_name)
+                                    img_f_name = ('img_stc_' + ject + '_' + eventname + '_' + m + '_with_peaks.png')
+                                    img_f_name = os.path.join(gp_folder, img_f_name)
+                                    brain.save_image(img_f_name)
+                                except Exception as ex:
+                                    rootlog.error(f"eLORETA with peaks failed --> {ex}")
+                    # Dipoles
+                    rootlog.info("Now calculating ECD.")
+                    try:
+                        for start, stop in dip_times.values():
+                            dip_epoch = e.copy().crop(start, stop).pick('meg')
+                            ecd = mne.fit_dipole(dip_epoch, noise_cov, bem_sol, trans=transfile)[0]
+                            best_idx = np.argmax(ecd.gof)
+                            best_time = ecd.times[best_idx]
+                            trans = mne.read_trans(transfile)
+                            mri_pos = mne.head_to_mri(ecd.pos, mri_head_t=trans, subject=subject, subjects_dir=dfc.fanat)
+                            t1_file_name = os.path.join(dfc.fanat, subject, 'mri', 'T1.mgz')
+                            stoptime = str(abs(int(stop*int(e.info["sfreq"]))))
+                            if stoptime == "5":
+                                stoptime = "05"
+                            title = str(eventname + ' - ECD @ minus ' + stoptime + ' ms')
+                            t1_fig = plot_anat(t1_file_name, cut_coords=mri_pos[0], title=title)
+                            t1_f_name_pic = ('img_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
+                            t1_f_name_pic = os.path.join(e_folder, "generic_pics", t1_f_name_pic)
+                            t1_fig.savefig(t1_f_name_pic)
+                            fig_3d = ecd.plot_locations(trans, subject, dfc.fanat, mode="orthoview")
+                            fig_3d_pic = ('img_3d_ecd_' + eventname + '_' + '_Dipol_' + stoptime + '.png')
+                            fig_3d_pic = os.path.join(e_folder, "generic_pics", fig_3d_pic)
+                            fig_3d.savefig(fig_3d_pic)
+                            plt.close("all")
+                    except Exception as ex:
+                        rootlog.error(f"ECD calculation failed --> {ex}")
                 except Exception as ex:
-                    rootlog.error(f"ECD calculation failed --> {ex}")
-            except Exception as ex:
-                rootlog.error(f"Source localization failed because of:\n {ex}")
+                    rootlog.error(f"Source localization failed because of:\n {ex}")
+    else:
+        rootlog.info("Source localization skipped, as no -epo file was found.")
     
     # Create report
     if do_report:

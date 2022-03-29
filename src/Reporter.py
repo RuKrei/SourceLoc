@@ -256,7 +256,12 @@ class EpilepsyReportBuilder:
             raise Exception
         
         fif = opj(self.spikes, self.subject + "-epo.fif")
-        fif = mne.read_epochs(fif)
+        if not os.path.isfile(fif):
+            fif = opj(self.derivatives_root, self.subject, "ses-resting", "meg")
+            fif = glob.glob(fif + "/*.fif")[0]              # won't work on windows, as \ would be needed
+            fif = mne.io.read_raw_fif(fif)
+        else:
+            fif = mne.read_epochs(fif)
         now = str(datetime.now())
         aquisition_date = self._get_aquisition_date(fif)
 
@@ -296,65 +301,66 @@ class EpilepsyReportBuilder:
 
         # Add topomaps
         epo_filename = opj(self.spikes, str(self.subject) + "-epo.fif")
-        concat_epochs = mne.read_epochs(epo_filename)
-        noise_cov_file = opj(self.spikes, "Spikes_noise_covariance.pkl")
-        times = linspace(-0.02, 0.01, 6)
-        with open(noise_cov_file, 'rb') as f:
-            noise_cov = load(f)
-        for e in desired_events:
-            event = os.path.basename(e)
-            matplotlib.rcParams["figure.facecolor"] = "white"
-            if self._is_desired_event(event):
-                viz_eve = concat_epochs[event].average().crop(-0.15, 0.1)         
-                fig = viz_eve.plot_joint(times=times, show=False)
-                title = str(event + " - Topomap")
-                report.add_figure(fig, title=title)
+        if os.path.isfile(epo_filename):
+            concat_epochs = mne.read_epochs(epo_filename)
+            noise_cov_file = opj(self.spikes, "Spikes_noise_covariance.pkl")
+            times = linspace(-0.02, 0.01, 6)
+            with open(noise_cov_file, 'rb') as f:
+                noise_cov = load(f)
+            for e in desired_events:
+                event = os.path.basename(e)
+                matplotlib.rcParams["figure.facecolor"] = "white"
+                if self._is_desired_event(event):
+                    viz_eve = concat_epochs[event].average().crop(-0.15, 0.1)         
+                    fig = viz_eve.plot_joint(times=times, show=False)
+                    title = str(event + " - Topomap")
+                    report.add_figure(fig, title=title)
 
-        # add stcs
-                modalities = ["eLORETA"]  # later also: "dSPM"?
-                rootlog.info(f"For event \"{event}\" the following stc-modalities were included: {modalities}.")
-                for modality in modalities:
-                    try:
-                        stc_file = self._return_stc(event=e, modality=modality)
-                        title = str(event + " - " + modality)
-                        report.add_stc(stc=stc_file, title=title,
-                                    subject=self.subject, subjects_dir=self.fanat, 
-                                    n_time_points=100)
-                    except Exception as ex:
-                        rootlog.warning(f"Couldn't include {modality} - stc to report because of: {ex}")
+            # add stcs
+                    modalities = ["eLORETA"]  # later also: "dSPM"?
+                    rootlog.info(f"For event \"{event}\" the following stc-modalities were included: {modalities}.")
+                    for modality in modalities:
+                        try:
+                            stc_file = self._return_stc(event=e, modality=modality)
+                            title = str(event + " - " + modality)
+                            report.add_stc(stc=stc_file, title=title,
+                                        subject=self.subject, subjects_dir=self.fanat, 
+                                        n_time_points=100)
+                        except Exception as ex:
+                            rootlog.warning(f"Couldn't include {modality} - stc to report because of: {ex}")
 
-        # add ECD pics
-                rootlog.info(f"Now generating ECD-plot for {event}...")
-                generic_pics_folder = os.path.join(self.spikes, event, "generic_pics")
-                drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
-                T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
-                matplotlib.rcParams["figure.facecolor"] = "black"
-                if drei != [] and T1 != []:
-                    ECD_fig = self._plot_ECD_table(T1=T1, drei=drei, event=event)
-                    caption = str(event + " - ECD")
-                    report.add_figure(ECD_fig, title=caption, caption=caption)
+            # add ECD pics
+                    rootlog.info(f"Now generating ECD-plot for {event}...")
+                    generic_pics_folder = os.path.join(self.spikes, event, "generic_pics")
+                    drei = sorted(glob.glob(generic_pics_folder + "/img_3d_ecd*.png"))
+                    T1 = sorted(glob.glob(generic_pics_folder + "/img_ecd_*.png"))
+                    matplotlib.rcParams["figure.facecolor"] = "black"
+                    if drei != [] and T1 != []:
+                        ECD_fig = self._plot_ECD_table(T1=T1, drei=drei, event=event)
+                        caption = str(event + " - ECD")
+                        report.add_figure(ECD_fig, title=caption, caption=caption)
 
-        # add custom pics and custom time series
-                custom_pics_folder = os.path.join(self.spikes, event, "custom_pics")
-                custom_pics = glob.glob(custom_pics_folder + "/*.png")
-                custom_ts_folder = os.path.join(self.spikes, e, "custom_time_series")
-                custom_ts = glob.glob(custom_ts_folder + "/*.png")
-                if custom_pics is not []:
-                    rootlog.info(f"Now adding custom pics for {event}...")
-                    for cst in custom_pics:
-                        cst_title = cst.split('/')[-1]
-                        cst_title = cst_title.split('.')[0]
-                        caption = event + ' - ' + cst_title
-                        report.add_image(cst, title=cst_title, caption=caption)
-                if custom_ts is not []:   
-                    rootlog.info(f"Now adding custom time series for {event}...") 
-                    for _ in custom_ts:
-                        caption = event + ' - Time course'
-                        fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
-                        fig = self._plot_time_course(event=e)
-                        plt.tight_layout()
-                        report.add_figure(fig, title=caption, caption=caption)
-                        break
+            # add custom pics and custom time series
+                    custom_pics_folder = os.path.join(self.spikes, event, "custom_pics")
+                    custom_pics = glob.glob(custom_pics_folder + "/*.png")
+                    custom_ts_folder = os.path.join(self.spikes, e, "custom_time_series")
+                    custom_ts = glob.glob(custom_ts_folder + "/*.png")
+                    if custom_pics is not []:
+                        rootlog.info(f"Now adding custom pics for {event}...")
+                        for cst in custom_pics:
+                            cst_title = cst.split('/')[-1]
+                            cst_title = cst_title.split('.')[0]
+                            caption = event + ' - ' + cst_title
+                            report.add_image(cst, title=cst_title, caption=caption)
+                    if custom_ts is not []:   
+                        rootlog.info(f"Now adding custom time series for {event}...") 
+                        for _ in custom_ts:
+                            caption = event + ' - Time course'
+                            fig = plt.figure(figsize=(30, 30), dpi=150, facecolor="k")
+                            fig = self._plot_time_course(event=e)
+                            plt.tight_layout()
+                            report.add_figure(fig, title=caption, caption=caption)
+                            break
 
         # add frequency distribution
             #freq_file = opj(self.freq, self.subject + "_Freqs-stc-psd-MNE.pkl")   # --> would be nice, but doesn't work, freq = time-index
