@@ -562,10 +562,10 @@ def main():
                                             method='dSPM', pick_ori='vector')
                                 surfer_kwargs = dict(subjects_dir=dfc.fanat, # hemi='split', 
                                             clim=dict(kind='percent', lims=[90, 96, 99.85]),
-                                            views=['lat', 'med'], 
+                                            #views=['lateral', 'medial'], 
                                             colorbar=True,
-                                            initial_time=0, time_unit='ms', 
-                                            size=(1000, 800), smoothing_steps=10)
+                                            initial_time=0, )#time_unit='ms', 
+                                            #size=(1000, 800), smoothing_steps=10)
                                 brain = stc_name.plot(**surfer_kwargs)
                                 label = str(ject + " - " + eventname + " - Vector solution")
                                 brain.add_text(0.1, 0.9, label, 'title', font_size=10)
