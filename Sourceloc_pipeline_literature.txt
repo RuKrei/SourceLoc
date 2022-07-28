@@ -1,0 +1,18 @@
+Hippocampal segmentation:
+
+
+If you have used results from this software for a publication, please cite:
+
+Iglesias, J.E., Augustinack, J.C., Nguyen, K., Player, C.M., Player, A., Wright,
+M., Roy, N., Frosch, M.P., McKee, A.C., Wald, L.L., Fischl, B., and Van Leemput, K.,
+A computational atlas of the hippocampal formation using ex vivo, ultra-high resolution
+MRI: Application to adaptive segmentation of in vivo MRI.  Neuroimage 115, 2015, 117-137.
+http://dx.doi.org/10.1016/j.neuroimage.2015.04.042
+
+In addition, if you have used the segmentation of the nuclei of the amygdala, please also cite:
+
+Saygin, Z.M. & Kliemann, D. (joint 1st authors), Iglesias, J.E., van der Kouwe, A.J.W.,
+Boyd, E., Reuter, M., Stevens, A., Van Leemput, K., McKee, A., Frosch, M.P., Fischl, B.,
+and Augustinack, J.C., High-resolution magnetic resonance imaging reveals nuclei of the
+human amygdala: manual segmentation to automatic atlas. Neuroimage 155, 2017, 370-382.
+http://doi.org/10.1016/j.neuroimage.2017.04.046
