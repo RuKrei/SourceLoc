@@ -56,7 +56,10 @@ class DerivativesFoldersCreator:
                                                 opj(dest, f), 
                                                 ignore)
         else:
-            shutil.copyfile(src, dest)
+            try:
+                shutil.copyfile(src, dest)
+            except:
+                pass
     
     def _copy_data_from_extras(self):
         splitter = "\\" if platform.system().lower().startswith("win") else "/"

@@ -2,8 +2,8 @@
 # Author: Rudi Kreidenhuber <Rudi.Kreidenhuber@gmail.com>
 # License: BSD (3-clause)
 
-from nipype.interfaces.freesurfer import ReconAll
-from dicom2nifti import convert_directory
+# from nipype.interfaces.freesurfer import ReconAll
+# from dicom2nifti import convert_directory
 import os
 from os.path import join as opj
 import argparse
@@ -145,6 +145,12 @@ class SourceModeler:
                         for {self.subject} --> {e}"
                 )
 
+    def _run_watershed(self):
+        try:
+            mne.bem.make_watershed_bem(self.subject, self.subjects_dir, copy=True)
+        except Exception as e:
+            print(e)
+
     def _make_bem_solution(self):
         bem_save_name = opj(self.fsrc, self.subject + "-single-shell-model")
         if not os.path.isfile(bem_save_name):
@@ -210,6 +216,7 @@ class SourceModeler:
     def calculate_source_models(self):
         self._make_vol_source_space()
         self._make_cortex_source_space()
+        self._run_watershed()
         self._make_bem_solution()
 
 
