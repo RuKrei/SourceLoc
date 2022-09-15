@@ -27,14 +27,14 @@ from nilearn.plotting import plot_anat
 # configuration
 
 #laptop - test
-bids_root = "/home/idrael/MEG/playground/BIDS_root"
-extras_directory = "/home/idrael/MEG/playground/extras"
-input_folder = "/home/idrael/MEG/playground/input_folder"
+#bids_root = "/home/idrael/MEG/playground/BIDS_root"
+#extras_directory = "/home/idrael/MEG/playground/extras"
+#input_folder = "/home/idrael/MEG/playground/input_folder"
 
 # work
-#bids_root = "/run/media/meg/DATA/MEG/test_BIDS_clinic"
-#extras_directory = "/home/meg/Schreibtisch/new_patients/extras"
-#input_folder = "/home/meg/Schreibtisch/new_patients"
+bids_root = "/run/media/meg/DATA/MEG/test_BIDS_clinic"
+extras_directory = "/home/meg/Schreibtisch/new_patients/extras"
+input_folder = "/home/meg/Schreibtisch/new_patients"
 
 #openmp = n_jobs = 8
 #spacing = "ico4"
