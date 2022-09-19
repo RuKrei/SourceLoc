@@ -229,9 +229,9 @@ class RawPreprocessor():
             return raw
     
     def raw_to_epoch(self, rawfile=None):
-        eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+        eve_name = rawfile.split(".fif")[0] + ".csv"
         if not os.path.isfile(eve_name):
-            eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+            eve_name = rawfile.split(".fif")[0] + ".txt"
         if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
             try:
                 print(f"\n\nNow epoching events from {rawfile}\n\n")

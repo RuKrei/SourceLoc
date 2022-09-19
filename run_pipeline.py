@@ -269,10 +269,11 @@ def main():
     sourcerer.calculate_source_models()
 
     # process raw fifs
-    raws = glob.glob(input_folder + "/*.fif")
+    proc_folder = os.path.join(input_folder, "processed")
+    raws = glob.glob(proc_folder + "/*.fif")
     raws = [f for f in raws if ject in f]
     epo_filename = opj(dfc.spikes, str(subject) + "-epo.fif")
-    concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
+    concatname = opj(os.path.dirname(raws[0]), str(subject) + "_prepped.fif")
 
     def raw_processing_already_done():
         r = os.path.isfile(concatname)
@@ -284,33 +285,33 @@ def main():
         rootlog.info(f"The following raw files were found for preprocessing:\n{raws}")
         prepper = u.RawPreprocessor()
         for run, rawfile in enumerate(raws):
-            if "tsss" in rawfile and ject in rawfile and not "-epo" in rawfile:
+            if not "-epo" in rawfile:
                 # --> search for matching eventfile and combine
                 rawname = rawfile.strip(".fif") + "_prep.fif"
                 if not "_prep" in rawfile:
                     # epochs
                     epochs = prepper.raw_to_epoch(rawfile)
                     if epochs is not None:
-                        epochs = epochs.load_data().filter(
-                            l_freq=l_freq,
-                            fir_design=fir_design,
-                            h_freq=h_freq,
-                            n_jobs=n_jobs,
-                        )
+                        #epochs = epochs.load_data().filter(
+                        #    l_freq=l_freq,
+                        #    fir_design=fir_design,
+                        #    h_freq=h_freq,
+                        #    n_jobs=n_jobs,
+                        #)
                         epo_filename = rawfile.strip(".fif") + "-epo.fif"
                         epochs.save(epo_filename, overwrite=True)
                     # preprocessing
                     raw = mne.io.read_raw(
                         rawfile, preload=False, on_split_missing="ignore"
                     )
-                    raw = prepper.filter_raw(
-                        raw,
-                        l_freq=l_freq,
-                        fir_design=fir_design,
-                        h_freq=h_freq,
-                        n_jobs=n_jobs,
-                    )
-                    raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
+                    #raw = prepper.filter_raw(
+                    #    raw,
+                    #    l_freq=l_freq,
+                    #    fir_design=fir_design,
+                    #    h_freq=h_freq,
+                    #    n_jobs=n_jobs,
+                    #)
+                    #raw = prepper.resample_raw(raw, s_freq=s_freq, n_jobs=n_jobs)
                     #
                     # Artifacts
                     # ECG artifacts
@@ -376,30 +377,30 @@ def main():
                 concat_epochs.save(epo_filename)
 
         # concatenate filtered and resampled files
-        raws = glob.glob(input_folder + "/*.fif")
-        raws = [f for f in raws if ject in f]
-        raws = [f for f in raws if "_prep" in f]
-        all_raws = dict()
-        concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
-        if not os.path.isfile(concatname):
-            for r in raws:
-                all_raws[r] = mne.io.read_raw(r, preload=False)
-                all_raws[r].del_proj()
-            rootlog.info(
-                f"Concatenating the following (filtered and resampled) raw files: {raws}"
-            )
-            try:
-                raw = mne.concatenate_raws([all_raws[r] for r in all_raws.keys()])
-                rootlog.info("Rawfiles have successfully been concatenated....")
-            except Exception as e:
-                rootlog.error(f"Failed trying to concatenate raw file\n {r} --> {e}")
-                # print("Loading only first raw file!")
-                # raw = mne.io.read_raw(raws[0])
-            rootlog.info("Applying SSP projectors on concatenated file...")
-            raw.add_proj(all_projs, remove_existing=True)
-            raw.apply_proj()
-            rootlog.info(f"Saving concatenated rawfile as {concatname}")
-            raw.save(concatname)
+        #raws = glob.glob(input_folder + "/*.fif")
+        #raws = [f for f in raws if ject in f]
+        #raws = [f for f in raws if "_prep" in f]
+        #all_raws = dict()
+        #concatname = opj(os.path.dirname(raws[0]), str(subject) + "_concat.fif")
+        #if not os.path.isfile(concatname):
+        #    for r in raws:
+        #        all_raws[r] = mne.io.read_raw(r, preload=False)
+        #        all_raws[r].del_proj()
+        #    rootlog.info(
+        #        f"Concatenating the following (filtered and resampled) raw files: {raws}"
+        #    )
+        #    try:
+        #        raw = mne.concatenate_raws([all_raws[r] for r in all_raws.keys()])
+        #        rootlog.info("Rawfiles have successfully been concatenated....")
+        #    except Exception as e:
+        #        rootlog.error(f"Failed trying to concatenate raw file\n {r} --> {e}")
+        #        # print("Loading only first raw file!")
+        #        # raw = mne.io.read_raw(raws[0])
+        #    rootlog.info("Applying SSP projectors on concatenated file...")
+        #    raw.add_proj(all_projs, remove_existing=True)
+        #    raw.apply_proj()
+        #    rootlog.info(f"Saving concatenated rawfile as {concatname}")
+        #    raw.save(concatname)
 
         # Save in BIDS format
         derivatives_root = opj(bids_root, "derivatives")
@@ -447,34 +448,30 @@ def main():
 
     # Coregistration --> this doesn't work with WSLg - from here on
     # run on windows, if you are on a windows machine
-    transfile = opj(dfc.ftrans, subject + "-trans.fif")
-    rootlog.info("Starting coregistration...")
-    if os.path.isfile(transfile):
-        rootlog.info(
-            f"Skipping coregistration, because a transfile ({transfile}) already exists"
-        )
-    else:
-        print(f"\n\n\n--> Transfile should be called: {transfile}\n\n\n")
-        try:
-            mne.gui.coregistration(
-                subject=subject,
-                subjects_dir=dfc.fanat,
-                inst=bids_path,
-                advanced_rendering=False,
-            )  # BIDS: inst=raw.filenames[0])
-        except:
-            print("failed with bids_derivatives folder")
-            rawfile = opj(dfc.fbase, "ses-resting", "meg", "*concat_meg.fif")
-            rawfile = glob.glob(rawfile)[0]
-            rootlog.info(
-                f"Coregistration with BIDS-file failed, Rawfile used was: {rawfile}"
-            )
-            mne.gui.coregistration(
-                subject=subject,
-                subjects_dir=dfc.fanat,
-                inst=rawfile,
-                advanced_rendering=False,
-            )
+    #transfile = opj(dfc.ftrans, subject + "-trans.fif")
+    #rootlog.info("Starting coregistration...")
+    #if os.path.isfile(transfile):
+    #    rootlog.info(
+    #        f"Skipping coregistration, because a transfile ({transfile}) already exists"
+    #    )
+    #else:
+    #    print(f"\n\n\n--> Transfile should be called: {transfile}\n\n\n")
+    #    try:
+    #        rawfile = opj(dfc.fbase, "ses-resting", "meg", "*concat_meg.fif")
+    #        rawfile = glob.glob(rawfile)[0]
+    #        rootlog.info(
+    #            f"Rawfile used was: {rawfile}"
+    #        )
+    #        mne.gui.coregistration(
+    #            subject=subject,
+    #            subjects_dir=dfc.fanat,
+    #            inst=rawfile,
+    #            #advanced_rendering=False,
+    #        )
+    #    except Exception as e:
+    #        print(e)
+    #        rootlog.warn(
+    #            f"Coreg failed with: {rawfile}")
 
     # frequency spectrum
     if do_frequencies:
@@ -490,11 +487,12 @@ def main():
         all_stcs_filename = opj(dfc.freq, all_stcs_filename)
         sensor_psd_filename = filebase + "-sensor-psd-MNE.pkl"
         sensor_psd_filename = opj(dfc.freq, sensor_psd_filename)
+        transfile = opj(dfc.ftrans, subject + "-trans.fif")
         if not os.path.isfile(all_stcs_filename) or not os.path.isfile(
             sensor_psd_filename
         ):  # so this should run only on the first file..
             # load again in case preprocessing didn't happen before
-            concatname = opj(input_folder, str(subject) + "_concat.fif")
+            concatname = opj(input_folder, "processed", str(subject) + "_prepped.fif")
             raw = mne.io.read_raw(concatname, preload=True)
             if os.path.isfile(fwd_name):
                 fwd = mne.read_forward_solution(fwd_name)
