@@ -228,7 +228,7 @@ class RawPreprocessor():
             raw.add_events(event_file)
             return raw
     
-    def raw_to_epoch(self, rawfile=None):
+    def raw_to_epoch(self, raw, rawfile=None, picks=["meg", "eeg"]):
         eve_name = rawfile.split(".fif")[0] + ".csv"
         if not os.path.isfile(eve_name):
             eve_name = rawfile.split(".fif")[0] + ".txt"
@@ -238,12 +238,14 @@ class RawPreprocessor():
                 event_file, event_dict = self.transform_eventfile(eve_name)
                 print(f"\n\nevent_file: {event_file}")
                 print(f"\n\nevent_dict: {event_dict}")
-                raw = mne.io.read_raw(rawfile)
                 epochs = mne.Epochs(raw, events=event_file,
                                         event_id=event_dict, 
                                         tmin=-1.5, tmax=1, 
-                                        baseline=(-1.5,-1), on_missing = "ignore", 
-                                        event_repeated="merge")
+                                        baseline=(-1.5,-0.7), 
+                                        on_missing = "ignore", 
+                                        picks=picks,
+                                        #event_repeated="merge",
+                                        )
                 del(raw)
                 return epochs
             except Exception as e:
