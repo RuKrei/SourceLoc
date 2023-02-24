@@ -312,7 +312,7 @@ class EpilepsyReportBuilder:
                 matplotlib.rcParams["figure.facecolor"] = "white"
                 if self._is_desired_event(event):
                     viz_eve = concat_epochs[event].average().crop(-0.15, 0.1)         
-                    fig = viz_eve.plot_joint(times=times, show=False)
+                    fig = viz_eve.plot_joint(times=times, show=False, picks="eeg")
                     title = str(event + " - Topomap")
                     report.add_figure(fig, title=title)
 
