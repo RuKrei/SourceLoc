@@ -291,7 +291,7 @@ class EpilepsyReportBuilder:
         try:
             cover_file = opj(self.extras_dir, "MEG_title.png")
             cover_title = self.subject + " MEG Befund"
-            report.add_images_to_section(cover_file, section=cover_title, captions=cover_title)
+            report.add_image(image=cover_file, title=cover_title)
         except FileNotFoundError as fnfe:
             rootlog.warning(f"MEG title page not found: {fnfe}")
 
@@ -312,7 +312,7 @@ class EpilepsyReportBuilder:
                 matplotlib.rcParams["figure.facecolor"] = "white"
                 if self._is_desired_event(event):
                     viz_eve = concat_epochs[event].average().crop(-0.15, 0.1)         
-                    fig = viz_eve.plot_joint(times=times, show=False)
+                    fig = viz_eve.plot_joint(times=times, show=False, picks="eeg")
                     title = str(event + " - Topomap")
                     report.add_figure(fig, title=title)
 
@@ -383,8 +383,8 @@ class EpilepsyReportBuilder:
         # BEM
         try:
             rootlog.info(f"Now adding BEM.")
-            report.add_bem_to_section(self.subject, decim=4, subjects_dir=self.fanat, 
-                                    section='BEM')
+            report.add_bem(self.subject, decim=4, subjects_dir=self.fanat, 
+                                width=256)
         except ValueError as ve:
             rootlog.info("Could not add BEM to report, maybe a spherical model was used? Error was: {ve}")
 
@@ -392,7 +392,7 @@ class EpilepsyReportBuilder:
         try:
             rootlog.info(f"Now adding Disclaimer.")
             disclaimer_file = opj(self.extras_dir, 'MEG_disclaimer.png')
-            report.add_images_to_section(disclaimer_file, section='disclaimer', captions='End notes')   
+            report.add_image(disclaimer_file, title='disclaimer')   
         except FileNotFoundError as fnfe:
             rootlog.warning(f"Disclaimer file not found - {e}")
             

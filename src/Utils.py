@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import shutil
 import subprocess
+import pyvista
 
 
 class FileNameRetriever():
@@ -228,22 +229,24 @@ class RawPreprocessor():
             raw.add_events(event_file)
             return raw
     
-    def raw_to_epoch(self, rawfile=None):
-        eve_name = rawfile.split(".fif")[0] + "_Events.csv"
+    def raw_to_epoch(self, raw, rawfile=None, picks=["meg", "eeg"]):
+        eve_name = rawfile.split(".fif")[0] + ".csv"
         if not os.path.isfile(eve_name):
-            eve_name = rawfile.split(".fif")[0] + "_Events.txt"
+            eve_name = rawfile.split(".fif")[0] + ".txt"
         if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
             try:
                 print(f"\n\nNow epoching events from {rawfile}\n\n")
                 event_file, event_dict = self.transform_eventfile(eve_name)
                 print(f"\n\nevent_file: {event_file}")
                 print(f"\n\nevent_dict: {event_dict}")
-                raw = mne.io.read_raw(rawfile)
                 epochs = mne.Epochs(raw, events=event_file,
                                         event_id=event_dict, 
                                         tmin=-1.5, tmax=1, 
-                                        baseline=(-1.5,-1), on_missing = "ignore", 
-                                        event_repeated="merge")
+                                        baseline=(-1.5,-0.7), 
+                                        on_missing = "ignore", 
+                                        picks=picks,
+                                        #event_repeated="merge",
+                                        )
                 del(raw)
                 return epochs
             except Exception as e:
@@ -256,7 +259,8 @@ def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None,
                         hemi='both',
                         time_label=title, colormap='inferno', 
                         add_data_kwargs=dict(time_label_size=10),
-                        clim=dict(kind='percent', lims=(25, 70, 99)))
+                        clim=dict(kind='percent', lims=(25, 70, 99)),
+                        )
     brain.show_view(azimuth=0, elevation=0, roll=0)
     return brain
 
@@ -269,7 +273,8 @@ def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, fil
     brain_rh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='rh',
                         time_label=title, colormap='inferno', size=(750, 400),
                         add_data_kwargs=dict(time_label_size=10),
-                        clim=dict(kind='percent', lims=(25, 70, 99)))                    
+                        clim=dict(kind='percent', lims=(25, 70, 99)),
+                        )                    
     return (brain_lh, brain_rh)
 
 def plot_freq_band_med(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
