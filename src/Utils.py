@@ -12,7 +12,7 @@ import subprocess
 import pyvista
 
 
-class FileNameRetriever():
+class FileNameRetriever:
     def __init__(self, bids_root):
         self.bids_root = bids_root
 
@@ -46,20 +46,19 @@ class FileNameRetriever():
                 "meg"
             Report-Folder:
                 "report"
-            
-            
 
-            
+
+
+
         """
-        
+
         self.subj = subj
         self.file = file
-        
 
         # basic folder structure
         fbase = os.path.join(self.bids_root, subj)
         fsrc = os.path.join(fbase, "source_model")
-        fanat = os. path.join(fbase, "freesurfer")
+        fanat = os.path.join(fbase, "freesurfer")
         fprep = os.path.join(fbase, "preprocessing")
         ffwd = os.path.join(fbase, "forward_model")
         finv = os.path.join(fbase, "inverse_model")
@@ -71,11 +70,11 @@ class FileNameRetriever():
         freport = os.path.join(fbase, "report")
 
         # filepaths - Source Models
-        if file in ["ico4" , "ico5", "oct5", "oct6", "vol-src"]:
-            srcfilename = (subj + '-' + file + '-src.fif')
+        if file in ["ico4", "ico5", "oct5", "oct6", "vol-src"]:
+            srcfilename = subj + "-" + file + "-src.fif"
             srcfilename = os.path.join(fsrc, srcfilename)
             return srcfilename
-        
+
         # filepaths - BEM solutions
         if file in ["single-shell-BEM-sol", "3-layer-BEM-sol"]:
             if file == "single-shell-BEM-sol":
@@ -89,36 +88,40 @@ class FileNameRetriever():
 
         # filepaths - BEM models
         if file in ["3-layer-BEM-model", "single-shell-model"]:
-            bem_f_name = subj + '-head.fif'
+            bem_f_name = subj + "-head.fif"
             if file == "single-shell-model":
-                bem_save_name = os.path.join(ffwd, bem_f_name.split(".")[0] + "-single-shell-bemfile-ico4.fif")
+                bem_save_name = os.path.join(
+                    ffwd, bem_f_name.split(".")[0] + "-single-shell-bemfile-ico4.fif"
+                )
                 return bem_save_name
             if file == "3-layer-BEM-model":
-                bem_save_name = os.path.join(ffwd, bem_f_name.split(".")[0] + "-3-layer-bemfile-ico4.fif")
+                bem_save_name = os.path.join(
+                    ffwd, bem_f_name.split(".")[0] + "-3-layer-bemfile-ico4.fif"
+                )
                 return bem_save_name
-        
+
         # filepath - concat file
         if file == "concat":
-            tsss_dir = os.path.join(self.bids_root, + subj, "meg")
+            tsss_dir = os.path.join(self.bids_root, +subj, "meg")
             concat_fname = subj + "-concat-raw-tsss.fif"
             concat = os.path.join(tsss_dir, concat_fname)
             return concat
 
-         # filepath - Subjects Directory
+        # filepath - Subjects Directory
         if file == "subjects_dir":
             return os.path.join(self.bids_root, subj, "freesurfer")
-        
+
         # filepath - Frequency distribution - MNE
-        if file=="freqMNE":
+        if file == "freqMNE":
             return os.path.join(freq, "MNE")
-        
+
         # filepath - Forward solution
-        if file=="fwd":
+        if file == "fwd":
             fwdname = str(subj + "-forward.fif")
             return os.path.join(ffwd, fwdname)
-        
+
         # filepath - Spike Folder
-        if file=="spikes":
+        if file == "spikes":
             fbase = os.path.join(self.bids_root, subj)
             spikes = os.path.join(fbase, "spikes")
             return spikes
@@ -131,42 +134,41 @@ class FileNameRetriever():
         if file == "preprocessing":
             return os.path.join(fbase, "preprocessing")
 
-
     def get_tsss_fifs(self, subj=None):
         tsss_dir = os.path.join(self.bids_root, subj, "meg")
         fifs = glob.glob(tsss_dir + "/*tsss.fif")
         return fifs
-    
+
     def get_tsss_eve_fifs(self, subj=None):
         tsss_dir = os.path.join(self.bids_root, subj, "meg")
         fifs = glob.glob(tsss_dir + "/*tsss-eve.fif")
         return fifs
-    
+
     def get_concat_fif(self, subj=None):
         tsss_dir = os.path.join(self.bids_root, subj, "meg")
         fifs = glob.glob(tsss_dir + "/*concat-raw-tsss.fif")
         return fifs
-    
+
     def get_trans_file(self, subj=None, fif=None):
         trans_dir = os.path.join(self.bids_root, subj, "meg")
         trans_name = fif.split("/")[-1].split(".")[0] + "-trans.fif"
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
-    
+
     def get_single_trans_file(self, subj=None):
         trans_dir = os.path.join(self.bids_root, subj, "trans_files")
         trans_name = str(subj) + "-trans.fif"
         trans_name = os.path.join(trans_dir, trans_name)
         return trans_name
 
-    def get_epochs_file(self, subj=None, fif=None): # becomes processing=epo
+    def get_epochs_file(self, subj=None, fif=None):  # becomes processing=epo
         epo_dir = os.path.join(self.bids_root, subj, "meg")
         epo_name = fif.split("/")[-1].split(".")[0] + "-epo.fif"
         epo_name = os.path.join(epo_dir, epo_name)
         return epo_name
 
-class RawPreprocessor():
 
+class RawPreprocessor:
     def __init__(self):
         pass
 
@@ -182,39 +184,42 @@ class RawPreprocessor():
 
         eve = pd.read_csv(event_file, header=0)
         le = LabelEncoder()
-        labels = eve.iloc[:,0]
+        labels = eve.iloc[:, 0]
         print(f"Labels --> {labels}")
         l_enc = le.fit_transform(labels)
         l_enc = l_enc
-        new_eve_file = pd.DataFrame([eve.iloc[:,1], eve.iloc[:,0], (l_enc +1)]).T
-        new_eve_file.reset_index(drop=True, inplace = True)
-        new_eve_file.iloc[:,0] = (new_eve_file.iloc[:,0]*1000).astype(int)
-        new_eve_file.iloc[0,2] = 0  #create one pseudo-event (that is going to be dropped later for some reason)
-        new_eve_file.iloc[:,0] = new_eve_file.iloc[:,0].astype(int)
-        new_eve_file.iloc[:,1] = new_eve_file.iloc[:,1].astype(str)
-        new_eve_file.iloc[:,2] = new_eve_file.iloc[:,2].astype(int)
-        new_eve_file.iloc[:,1] = int("0")
+        new_eve_file = pd.DataFrame([eve.iloc[:, 1], eve.iloc[:, 0], (l_enc + 1)]).T
+        new_eve_file.reset_index(drop=True, inplace=True)
+        new_eve_file.iloc[:, 0] = (new_eve_file.iloc[:, 0] * 1000).astype(int)
+        new_eve_file.iloc[
+            0, 2
+        ] = 0  # create one pseudo-event (that is going to be dropped later for some reason)
+        new_eve_file.iloc[:, 0] = new_eve_file.iloc[:, 0].astype(int)
+        new_eve_file.iloc[:, 1] = new_eve_file.iloc[:, 1].astype(str)
+        new_eve_file.iloc[:, 2] = new_eve_file.iloc[:, 2].astype(int)
+        new_eve_file.iloc[:, 1] = int("0")
 
-        name_of_events = np.unique(eve.iloc[:,0])
+        name_of_events = np.unique(eve.iloc[:, 0])
         name_of_events = np.sort(name_of_events)
-        event_dict=dict()
-        event_dict['ignore_me']=0
+        event_dict = dict()
+        event_dict["ignore_me"] = 0
         for i in range(name_of_events.size):
-            key = (name_of_events[i])
+            key = name_of_events[i]
             val = i + 1
             event_dict[key] = val
         return new_eve_file, event_dict
-    
+
     def filter_raw(self, raw, l_freq, h_freq, n_jobs=1, fir_design="firwin"):
         raw.load_data()
-        raw = raw.filter(l_freq=l_freq, h_freq=h_freq, 
-                        n_jobs=n_jobs, fir_design=fir_design)
+        raw = raw.filter(
+            l_freq=l_freq, h_freq=h_freq, n_jobs=n_jobs, fir_design=fir_design
+        )
         print("Filtering complete!")
         return raw
-    
+
     def resample_raw(self, raw, s_freq=300, events=None, n_jobs=1):
         print(f"Resampling to {s_freq} Hz")
-        raw = raw.resample(s_freq, npad='auto', events=events, n_jobs=n_jobs)
+        raw = raw.resample(s_freq, npad="auto", events=events, n_jobs=n_jobs)
         print("Resampling complete!")
         return raw
 
@@ -222,86 +227,131 @@ class RawPreprocessor():
         eve_name = rawfile.split(".fif")[0] + "_Events.csv"
         if not os.path.isfile(eve_name):
             eve_name = rawfile.split(".fif")[0] + "_Events.txt"
-        if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+        if os.path.isfile(
+            eve_name
+        ):  # if fif-file matches event-file --> add events to fif-file
             print(f"\n\nNow adding Events ({eve_name}) to fif ({rawfile})\n\n")
             raw = mne.io.read_raw(rawfile, preload=True, on_split_missing="ignore")
             event_file, _ = self.transform_eventfile(eve_name)
             raw.add_events(event_file)
             return raw
-    
+
     def raw_to_epoch(self, raw, rawfile=None, picks=["meg", "eeg"]):
         eve_name = rawfile.split(".fif")[0] + ".csv"
         if not os.path.isfile(eve_name):
             eve_name = rawfile.split(".fif")[0] + ".txt"
-        if os.path.isfile(eve_name): # if fif-file matches event-file --> add events to fif-file
+        if os.path.isfile(
+            eve_name
+        ):  # if fif-file matches event-file --> add events to fif-file
             try:
                 print(f"\n\nNow epoching events from {rawfile}\n\n")
                 event_file, event_dict = self.transform_eventfile(eve_name)
                 print(f"\n\nevent_file: {event_file}")
                 print(f"\n\nevent_dict: {event_dict}")
-                epochs = mne.Epochs(raw, events=event_file,
-                                        event_id=event_dict, 
-                                        tmin=-1.5, tmax=1, 
-                                        baseline=(-1.5,-0.7), 
-                                        on_missing = "ignore", 
-                                        picks=picks,
-                                        #event_repeated="merge",
-                                        )
-                del(raw)
+                epochs = mne.Epochs(
+                    raw,
+                    events=event_file,
+                    event_id=event_dict,
+                    tmin=-1.5,
+                    tmax=1,
+                    baseline=(-1.5, -0.7),
+                    on_missing="ignore",
+                    picks=picks,
+                    # event_repeated="merge",
+                )
+                del raw
                 return epochs
             except Exception as e:
-                print(f"failed at returning an epochs object for: {rawfile}\nbecause of {e}")
+                print(
+                    f"failed at returning an epochs object for: {rawfile}\nbecause of {e}"
+                )
 
-def plot_freq_band_dors(stc_band, band=None, subject=None, subjects_dir=None, 
-                        filebase=None):
+
+def plot_freq_band_dors(
+    stc_band, band=None, subject=None, subjects_dir=None, filebase=None
+):
     title = str(filebase) + " " + str(band)
-    brain = stc_band.plot(subject=subject, subjects_dir=subjects_dir, 
-                        hemi='both',
-                        time_label=title, colormap='inferno', 
-                        add_data_kwargs=dict(time_label_size=10),
-                        clim=dict(kind='percent', lims=(25, 70, 99)),
-                        )
+    brain = stc_band.plot(
+        subject=subject,
+        subjects_dir=subjects_dir,
+        hemi="both",
+        time_label=title,
+        colormap="inferno",
+        add_data_kwargs=dict(time_label_size=10),
+        clim=dict(kind="percent", lims=(25, 70, 99)),
+    )
     brain.show_view(azimuth=0, elevation=0, roll=0)
     return brain
 
-def plot_freq_band_lat(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
+
+def plot_freq_band_lat(
+    stc_band, band=None, subject=None, subjects_dir=None, filebase=None
+):
     title = str(filebase) + " " + str(band)
-    brain_lh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='lh',
-                        time_label=title, colormap='inferno', size=(750, 400),    # size was (1500, 800) before
-                        add_data_kwargs=dict(time_label_size=10),
-                        clim=dict(kind='percent', lims=(25, 70, 99)))
-    brain_rh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='rh',
-                        time_label=title, colormap='inferno', size=(750, 400),
-                        add_data_kwargs=dict(time_label_size=10),
-                        clim=dict(kind='percent', lims=(25, 70, 99)),
-                        )                    
+    brain_lh = stc_band.plot(
+        subject=subject,
+        subjects_dir=subjects_dir,
+        hemi="lh",
+        time_label=title,
+        colormap="inferno",
+        size=(750, 400),  # size was (1500, 800) before
+        add_data_kwargs=dict(time_label_size=10),
+        clim=dict(kind="percent", lims=(25, 70, 99)),
+    )
+    brain_rh = stc_band.plot(
+        subject=subject,
+        subjects_dir=subjects_dir,
+        hemi="rh",
+        time_label=title,
+        colormap="inferno",
+        size=(750, 400),
+        add_data_kwargs=dict(time_label_size=10),
+        clim=dict(kind="percent", lims=(25, 70, 99)),
+    )
     return (brain_lh, brain_rh)
 
-def plot_freq_band_med(stc_band, band=None, subject=None, subjects_dir=None, filebase=None):
+
+def plot_freq_band_med(
+    stc_band, band=None, subject=None, subjects_dir=None, filebase=None
+):
     title = str(filebase) + " " + str(band)
-    brain_lh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='lh',
-                        views='medial',
-                        time_label=title, colormap='inferno', size=(750, 400),
-                        add_data_kwargs=dict(time_label_size=10),
-                        clim=dict(kind='percent', lims=(25, 70, 99)))
-    brain_rh = stc_band.plot(subject=subject, subjects_dir=subjects_dir, hemi='rh',
-                        time_label=title, colormap='inferno', size=(750, 400),
-                        add_data_kwargs=dict(time_label_size=10),
-                        views='medial',
-                        clim=dict(kind='percent', lims=(25, 70, 99)))                    
+    brain_lh = stc_band.plot(
+        subject=subject,
+        subjects_dir=subjects_dir,
+        hemi="lh",
+        views="medial",
+        time_label=title,
+        colormap="inferno",
+        size=(750, 400),
+        add_data_kwargs=dict(time_label_size=10),
+        clim=dict(kind="percent", lims=(25, 70, 99)),
+    )
+    brain_rh = stc_band.plot(
+        subject=subject,
+        subjects_dir=subjects_dir,
+        hemi="rh",
+        time_label=title,
+        colormap="inferno",
+        size=(750, 400),
+        add_data_kwargs=dict(time_label_size=10),
+        views="medial",
+        clim=dict(kind="percent", lims=(25, 70, 99)),
+    )
     return (brain_lh, brain_rh)
- 
-def get_peak_points(stc, hemi='lh', 
-                        tmin=-.02, tmax=0, nr_points=5, 
-                        mode='abs'):
-    '''
-    Returns a list of vertices with peak activation at time points 
+
+
+def get_peak_points(stc, hemi="lh", tmin=-0.02, tmax=0, nr_points=5, mode="abs"):
+    """
+    Returns a list of vertices with peak activation at time points
     as given by tmin, tmax and nr_points
-    '''
+    """
     pos = dict()
     for t in np.linspace(tmin, tmax, nr_points):
-        pos[t], _ = stc.get_peak(hemi=hemi, tmin=(t -0.005), tmax=(t + 0.005), mode=mode)
+        pos[t], _ = stc.get_peak(
+            hemi=hemi, tmin=(t - 0.005), tmax=(t + 0.005), mode=mode
+        )
     return pos.values()
+
 
 def recursive_overwrite(src, dest, ignore=None):
     if os.path.isdir(src):
@@ -314,12 +364,10 @@ def recursive_overwrite(src, dest, ignore=None):
             ignored = set()
         for f in files:
             if f not in ignored:
-                recursive_overwrite(os.path.join(src, f), 
-                                    os.path.join(dest, f), 
-                                    ignore)
+                recursive_overwrite(os.path.join(src, f), os.path.join(dest, f), ignore)
     else:
         shutil.copyfile(src, dest)
 
+
 def run_shell_command(command):
-    subprocess.run(command, shell=True, 
-                   capture_output=True, check=True)
+    subprocess.run(command, shell=True, capture_output=True, check=True)
